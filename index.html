@@ -11,7 +11,7 @@
 <body>
 <main id="game">
   <section id="menu" class="screen">
-    <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div></header>
+    <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
       <div class="intro"><h1>CHOISIR UN MODE</h1></div>
       <div class="mode-grid">
@@ -30,6 +30,37 @@
         <button id="start" class="start-button">LANCER LE MATCH <span>→</span></button>
       </div>
     </div>
+
+    <section id="controls-panel" class="controls-panel hidden">
+      <div class="controls-panel-head"><div><h2>COMMANDES & PÉRIPHÉRIQUES</h2><p>Configure chaque entrée puis teste-la en direct.</p></div><button id="controls-back" class="small-button">← RETOUR</button></div>
+      <div class="controls-columns">
+        <div class="control-column"><h3>CLAVIER <span>TOUCHES MODIFIABLES</span></h3><p class="control-hint">Clique sur une touche puis appuie sur celle que tu veux utiliser.</p>
+          <div class="keybind-list">
+            <div class="keybind-row"><span>AVANCER</span><button class="keybind" data-bind="forward">Z</button></div>
+            <div class="keybind-row"><span>RECULER</span><button class="keybind" data-bind="backward">S</button></div>
+            <div class="keybind-row"><span>ROTATION GAUCHE</span><button class="keybind" data-bind="left">Q</button></div>
+            <div class="keybind-row"><span>ROTATION DROITE</span><button class="keybind" data-bind="right">D</button></div>
+            <div class="keybind-row"><span>BOOST</span><button class="keybind" data-bind="boost">ESPACE</button></div>
+            <div class="keybind-row"><span>SCIE / ACTION</span><button class="keybind" data-bind="action">E</button></div>
+          </div><button id="reset-bindings" class="reset-bindings">RÉINITIALISER LE CLAVIER</button>
+        </div>
+        <div class="control-column"><h3>MANETTE / FPV <span>DÉTECTION AUTO</span></h3>
+          <div id="gamepad-status" class="gamepad-status"><i class="device-dot"></i><div><b>AUCUN CONTRÔLEUR DÉTECTÉ</b><small>Connecte une manette USB ou Bluetooth. Appuie sur un bouton si nécessaire.</small></div></div>
+          <div id="gamepad-config" class="gamepad-config">
+            <div class="axis-config"><div><b>1 · AVANCE / RECULE</b><small>Un seul axe analogique</small></div><button class="assign-control" data-assign="throttle">AXE 2 · Y</button></div>
+            <div class="axis-config"><div><b>2 · ROTATION</b><small>Un seul axe analogique</small></div><button class="assign-control" data-assign="steering">AXE 1 · X</button></div>
+            <div class="axis-config"><div><b>3 · SCIE ON / OFF</b><small>Un bouton : active ou arrête la scie</small></div><button class="assign-control" data-assign="saw">BOUTON 1</button></div>
+          </div>
+          <div class="live-test"><div class="live-title">TEST EN TEMPS RÉEL <span id="live-device">EN ATTENTE</span></div>
+            <div class="live-row"><span>AVANCE</span><div class="meter"><i id="throttle-meter"></i></div><b id="throttle-value">0%</b></div>
+            <div class="live-row"><span>ROTATION</span><div class="meter"><i id="steering-meter"></i></div><b id="steering-value">0%</b></div>
+            <div class="live-row"><span>SCIE</span><div class="saw-indicator" id="saw-indicator">ARRÊTÉE</div></div>
+            <p id="assign-hint" class="control-hint">Clique sur une affectation pour détecter un axe ou un bouton.</p>
+          </div>
+          <p class="control-hint device-note">Compatible avec les manettes et contrôleurs FPV exposés au navigateur via l'API Gamepad. Le nom et les entrées disponibles dépendent du pilote et du navigateur.</p>
+        </div>
+      </div>
+    </section>
     <footer>ROBOT ARENA <span>ZQSD / WASD · ESPACE : BOOST</span></footer>
   </section>
 
