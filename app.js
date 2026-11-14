@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen');
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x080808);scene.fog=new THREE.Fog(0x080808,28,60);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x080808);scene.fog=new THREE.Fog(0x080808,45,95);
 const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(0,18,20);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;game.insertBefore(renderer.domElement,menu);
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
@@ -24,19 +24,19 @@ function buildArena(){
   for(const x of [-.8,.8])add(new THREE.BoxGeometry(.1,.02,1),M.line,world,x,-.09,0);
   return;
  }
- const arenaWidth=28,halfWidth=arenaWidth/2;
- floorBox(arenaWidth,14,mode==='hockey'?mat(0x666666):M.floor);
+ const arenaWidth=mode==='hockey'?32:28,arenaDepth=mode==='hockey'?18:28,halfWidth=arenaWidth/2,halfDepth=arenaDepth/2;
+ floorBox(arenaWidth,arenaDepth,mode==='hockey'?mat(0x666666):M.floor);
  if(mode==='combat'){
-  for(const [x,z,w,d] of [[0,-7,arenaWidth,.35],[0,7,arenaWidth,.35],[-halfWidth,0,.35,14],[halfWidth,0,.35,14]])add(new THREE.BoxGeometry(w,1,d),M.black,world,x,.25,z);
+  for(const [x,z,w,d] of [[0,-halfDepth,arenaWidth,.35],[0,halfDepth,arenaWidth,.35],[-halfWidth,0,.35,arenaDepth],[halfWidth,0,.35,arenaDepth]])add(new THREE.BoxGeometry(w,1,d),M.black,world,x,.25,z);
   const grid=new THREE.GridHelper(arenaWidth-1,32,0x777777,0x444444);grid.position.y=-.03;world.add(grid);return;
  }
- // Patinoire élargie : les deux cages restent centrées sur les petits côtés.
- for(const [x,z,w,d] of [[-halfWidth,0,.3,14],[halfWidth,0,.3,14],[-6.875,-7,14.25,.3],[6.875,-7,14.25,.3],[-6.875,7,14.25,.3],[6.875,7,14.25,.3]])add(new THREE.BoxGeometry(w,.65,d),M.black,world,x,.12,z);
- for(const z of [-7,7]){
-  const back=z<0?-8.25:8.25;
-  for(const x of [-1.7,1.7])add(new THREE.BoxGeometry(.12,1.15,1.25),M.steel,world,x,.52,z);
-  add(new THREE.BoxGeometry(3.5,.12,1.25),M.steel,world,0,1.08,z);
-  const net=add(new THREE.BoxGeometry(3.35,.8,.08),mat(0x222222),world,0,.48,back);net.material.transparent=true;net.material.opacity=.5;
+ // Patinoire rectangulaire : les cages sont placées à gauche et à droite.
+ for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
+ for(const x of [-halfWidth,halfWidth]){
+  for(const z of [-5.3,5.3])add(new THREE.BoxGeometry(.3,.65,7.4),M.black,world,x,.12,z);
+  for(const z of [-1.55,1.55])add(new THREE.BoxGeometry(.12,1.15,.12),M.steel,world,x,.52,z);
+  add(new THREE.BoxGeometry(.12,.12,3.1),M.steel,world,x,1.08,0);
+  const net=add(new THREE.BoxGeometry(.8,.8,3.0),mat(0x222222),world,x+(x>0?.45:-.45),.48,0);net.material.transparent=true;net.material.opacity=.5;
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -74,14 +74,15 @@ function makeRobot(team){
    add(new THREE.BoxGeometry(.2,.2,.18),M.black,root,side*.72,.13,2.88);
   }
  }
- return {root,weapon,hp:100,v:0,alive:true,cooldown:0};
+ if(mode==='combat')weapon.scale.setScalar(.5);
+ return {root,weapon,hp:100,v:0,alive:true,cooldown:0,contacts:0,contactCooldown:0};
 }
 function resetPositions(){
  if(!player||!enemy)return;
  if(mode==='sumo'){player.root.position.set(-3,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(3,.12,0);enemy.root.rotation.y=-Math.PI/2}
- else if(mode==='hockey'){player.root.position.set(0,.12,4.5);player.root.rotation.y=Math.PI;enemy.root.position.set(0,.12,-4.5);enemy.root.rotation.y=0}
+ else if(mode==='hockey'){player.root.position.set(-10,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(10,.12,0);enemy.root.rotation.y=-Math.PI/2}
  else{player.root.position.set(-5,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(5,.12,0);enemy.root.rotation.y=-Math.PI/2}
- for(const b of [player,enemy]){b.v=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0}
+ for(const b of [player,enemy]){b.v=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0;b.contacts=0;b.contactCooldown=0;b.prevX=b.root.position.x;b.prevZ=b.root.position.z}
  if(puck){puck.position.set(0,.12,0);puck.userData.vx=puck.userData.vz=0}
 }
 function buildMatch(){buildArena();player=makeRobot('blue');enemy=makeRobot('red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
@@ -109,24 +110,45 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?-13.72:-13.72,maxX=13.72,minZ=-6.72,maxZ=6.72;
+ const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?-15.72:-13.72,maxX=mode==='hockey'?15.72:13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
  if(bounds.max.z>maxZ)bot.root.position.z-=bounds.max.z-maxZ;
 }
 function collideBots(a,b,dt){
- const ah=robotHitboxes(a),bh=robotHitboxes(b);let contacts=[],weaponA=false,weaponB=false;
- for(const x of ah)for(const y of bh)if(x.box.intersectsBox(y.box)){contacts.push([x,y]);if(x.mesh.parent===a.weapon)weaponA=true;if(y.mesh.parent===b.weapon)weaponB=true}
+ const ah=robotHitboxes(a),bh=robotHitboxes(b);let weaponA=false,weaponB=false;
+ for(const x of ah)for(const y of bh)if(x.box.intersectsBox(y.box)){if(x.mesh.parent===a.weapon)weaponA=true;if(y.mesh.parent===b.weapon)weaponB=true}
+ a.contactCooldown=Math.max(0,(a.contactCooldown||0)-dt);b.contactCooldown=Math.max(0,(b.contactCooldown||0)-dt);
  const dx=b.root.position.x-a.root.position.x,dz=b.root.position.z-a.root.position.z,d=Math.hypot(dx,dz);
- if(d>.001&&(contacts.length||(mode==='hockey'&&d<2.35))){
-  const nx=dx/d,nz=dz/d;
-  const overlap=mode==='hockey'?Math.max(0,2.35-d):.07;
-  a.root.position.x-=nx*(overlap*.52);b.root.position.x+=nx*(overlap*.52);
-  a.root.position.z-=nz*(overlap*.52);b.root.position.z+=nz*(overlap*.52);
-  if(mode==='hockey'){
-   const av=a.v,bv=b.v;
-   a.v=Math.max(0,av*.55+bv*.2);b.v=Math.max(0,bv*.55+av*.2);
+ const sx=(b.root.position.x-(b.prevX??b.root.position.x))-(a.root.position.x-(a.prevX??a.root.position.x));
+ const sz=(b.root.position.z-(b.prevZ??b.root.position.z))-(a.root.position.z-(a.prevZ??a.root.position.z));
+ const px=(a.prevX??a.root.position.x),pz=(a.prevZ??a.root.position.z),rx=(b.prevX??b.root.position.x)-px,rz=(b.prevZ??b.root.position.z)-pz;
+ const travel2=sx*sx+sz*sz,t=travel2>.0001?clamp(-(rx*sx+rz*sz)/travel2,0,1):0;
+ const closest=Math.hypot(rx+sx*t,rz+sz*t),minDistance=mode==='hockey'?2.45:mode==='combat'?2.35:2.1;
+ const touching=d<minDistance||closest<minDistance;
+ if(touching){
+  let nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;
+  let nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0;
+  if(d<minDistance){
+   const overlap=minDistance-d+.025;
+   a.root.position.x-=nx*overlap*.5;b.root.position.x+=nx*overlap*.5;
+   a.root.position.z-=nz*overlap*.5;b.root.position.z+=nz*overlap*.5;
+  }else if(closest<minDistance){
+   const midX=(a.root.position.x+b.root.position.x)*.5,midZ=(a.root.position.z+b.root.position.z)*.5;
+   a.root.position.x=midX-nx*(minDistance*.51);b.root.position.x=midX+nx*(minDistance*.51);
+   a.root.position.z=midZ-nz*(minDistance*.51);b.root.position.z=midZ+nz*(minDistance*.51);
+  }
+  const avx=Math.sin(a.root.rotation.y)*a.v,avz=Math.cos(a.root.rotation.y)*a.v;
+  const bvx=Math.sin(b.root.rotation.y)*b.v,bvz=Math.cos(b.root.rotation.y)*b.v;
+  const closing=(bvx-avx)*nx+(bvz-avz)*nz;
+  if(closing<0){
+   const impact=Math.min(1,Math.abs(closing)/8);
+   a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact));
+  }
+  if((a.contactCooldown<=0||b.contactCooldown<=0)&&Math.abs(closing)>1.2){
+   a.contacts=(a.contacts||0)+1;b.contacts=(b.contacts||0)+1;
+   a.contactCooldown=b.contactCooldown=.45;
   }
   const fa=Math.sin(a.root.rotation.y)*dx+Math.cos(a.root.rotation.y)*dz,fb=-Math.sin(b.root.rotation.y)*dx-Math.cos(b.root.rotation.y)*dz;
   if(mode==='combat'){
@@ -135,14 +157,15 @@ function collideBots(a,b,dt){
   }
   if(mode==='sumo'){if(fa>0)b.v+=12*dt*10;if(fb>0)a.v+=12*dt*10}
  }
+ a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
 function updatePuck(dt){
  puck.position.x+=puck.userData.vx*dt;puck.position.z+=puck.userData.vz*dt;
  const friction=Math.pow(.986,dt*60);puck.userData.vx*=friction;puck.userData.vz*=friction;
- if(Math.abs(puck.position.x)>9.3){puck.position.x=clamp(puck.position.x,-9.3,9.3);puck.userData.vx*=-.8}
- if(puck.position.z<-7.05&&Math.abs(puck.position.x)<1.25){scoreGoal('blue');return}
- if(puck.position.z>7.05&&Math.abs(puck.position.x)<1.25){scoreGoal('red');return}
- if(Math.abs(puck.position.z)>6.7){puck.position.z=clamp(puck.position.z,-6.7,6.7);puck.userData.vz*=-.75}
+ if(puck.position.x>16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('blue');return}
+ if(puck.position.x<-16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('red');return}
+ if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.8}
+ if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.75}
  const puckBox=new THREE.Box3().setFromObject(puck);
  for(const b of [player,enemy]){b.puckTouchCooldown=Math.max(0,(b.puckTouchCooldown||0)-dt);if(b.puckTouchCooldown>0)continue;const parts=robotHitboxes(b);let hit=false;for(const part of parts)if(part.box.intersectsBox(puckBox)){hit=true;break}if(hit){let dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z,d=Math.hypot(dx,dz)||1,nx=dx/d,nz=dz/d;puck.userData.vx+=nx*(Math.abs(b.v)*.7+2.5);puck.userData.vz+=nz*(Math.abs(b.v)*.7+2.5);puck.position.x+=nx*.18;puck.position.z+=nz*.18;b.puckTouchCooldown=.12}}
  const s=Math.hypot(puck.userData.vx,puck.userData.vz);if(s>19){puck.userData.vx*=17/s;puck.userData.vz*=17/s}
@@ -154,6 +177,7 @@ function updateHud(){
  $('#score-blue').textContent=Math.ceil(a);$('#score-red').textContent=Math.ceil(b);
  $('#bar-blue').style.width=(mode==='combat'?a:a/3*100)+'%';$('#bar-red').style.width=(mode==='combat'?b:b/3*100)+'%';
  $('#label-blue').textContent=$('#label-red').textContent=mode==='combat'?'INTÉGRITÉ':mode==='sumo'?'MANCHES':'BUTS';
+ $('#contact-count').textContent='CONTACTS · BLEU '+(player.contacts||0)+' / ROUGE '+(enemy.contacts||0);
 }
 function finish(winner,detail){if(ended)return;ended=true;$('#end-title').textContent=winner==='BLEU'?'VICTOIRE':'DÉFAITE';$('#end-detail').textContent=detail;$('#end').classList.remove('hidden')}
 function attackPuck(bot){if(!puck||bot.cooldown>0)return;const d=Math.hypot(puck.position.x-bot.root.position.x,puck.position.z-bot.root.position.z);if(d<3){puck.userData.vx+=Math.sin(bot.root.rotation.y)*16;puck.userData.vz+=Math.cos(bot.root.rotation.y)*16;bot.cooldown=.3}}
@@ -162,7 +186,7 @@ function setMode(m){
  const data={
  combat:{title:'RÈGLES · COMBAT',items:['Duel dans une arène fermée.','L’arme rotative inflige des dégâts sur les impacts.','Un robot neutralisé ou à 0 % est éliminé.','À la fin du temps, le plus d’intégrité gagne.'],help:'Combat : E pour une attaque supplémentaire.',labels:['INTÉGRITÉ','INTÉGRITÉ']},
  sumo:{title:'RÈGLES · SUMO',items:['Deux robots se font face sur un dohyo circulaire.','Pousse l’adversaire hors du cercle.','Sortir du dohyo fait perdre la manche.','Le premier à gagner deux manches remporte le match.'],help:'Sumo : pousse l’adversaire hors du dohyo.',labels:['MANCHES','MANCHES']},
- hockey:{title:'RÈGLES · HOCKEY',items:['Deux robots jouent sur une patinoire avec un palet et deux cages.','Le crochet ouvert guide le palet sans l’enfermer.','Un but est marqué lorsque le palet franchit la ligne dans la cage.','Le premier à marquer trois buts gagne.'],help:'Hockey : E pour frapper le palet.',labels:['BUTS','BUTS']}
+ hockey:{title:'RÈGLES · HOCKEY',items:['Deux robots s’affrontent sur une patinoire avec un palet.','Les cages sont placées à gauche et à droite du terrain.','Un but est marqué lorsque le palet franchit la ligne dans la cage.','Le premier à marquer trois buts gagne.'],help:'Hockey : E pour frapper le palet.',labels:['BUTS','BUTS']}
  }[m];
  $('#rules-title').textContent=data.title;$('#rules-list').innerHTML=data.items.map(x=>'<li>'+x+'</li>').join('');$('#mode-help').textContent=data.help;$('#label-blue').textContent=data.labels[0];$('#label-red').textContent=data.labels[1];$('#action-button').textContent=m==='hockey'?'TIR':'SCIE';$('#weight-setting').style.display=m==='combat'?'grid':'none';$('.settings-grid').style.gridTemplateColumns=m==='combat'?'repeat(3,1fr)':'repeat(2,1fr)';
 }
@@ -188,7 +212,7 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){sawEnabled=false;remaining=Number($('#duration').value);aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=false;$('#end').classList.add('hidden');$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
+function startMatch(){sawEnabled=false;remaining=120;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=false;$('#end').classList.add('hidden');$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
 function backMenu(){ended=true;sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 $('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
@@ -206,12 +230,13 @@ function loop(){
   const sawKey=actionDown('action'),sawButton=!!padInput?.sawPressed,sawInput=sawKey||sawButton;
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
+  player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z;
   drive(player,dt,f,steering);updateAI(dt);confineRobot(player);confineRobot(enemy);
   if(mode==='hockey'){collideBots(player,enemy,dt);updatePuck(dt);if(sawInput)attackPuck(player)}
   else{collideBots(player,enemy,dt);if(mode==='sumo')updateSumo();else if(player.hp<=0||enemy.hp<=0)finish(player.hp>enemy.hp?'BLEU':'ROUGE','Robot neutralisé.')}
   updateHud();
  }
  const target=player?new THREE.Vector3((player.root.position.x+enemy.root.position.x)*.5,0,(player.root.position.z+enemy.root.position.z)*.5):new THREE.Vector3(0,0,0);
- camera.position.lerp(new THREE.Vector3(target.x,mode==='sumo'?19:17,target.z+19),.045);camera.lookAt(target);renderer.render(scene,camera);
+ camera.position.lerp(new THREE.Vector3(target.x,mode==='sumo'?19:mode==='combat'?27:20,target.z+(mode==='combat'?34:mode==='hockey'?27:19)),.045);camera.lookAt(target);renderer.render(scene,camera);
 }
 loop();
