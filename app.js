@@ -272,7 +272,7 @@ function startMatch(){
  const renderProbe=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.2,3.2),new THREE.MeshBasicMaterial({color:0xff00ff}));
  renderProbe.position.set(0,2.2,0);scene.add(renderProbe);
  window.__showArenaDiagnostic?.('TEST 3D V.10 — un cube magenta doit apparaître au centre pendant 3 secondes.');
- setTimeout(()=>{scene.remove(renderProbe);renderProbe.geometry.dispose();renderProbe.material.dispose();window.__hideArenaDiagnostic?.()},3000);
+ setTimeout(()=>{scene.remove(renderProbe);renderProbe.geometry.dispose();renderProbe.material.dispose();window.__hideArenaDiagnostic?.()},9000);
  // Attendre que l'écran de match soit réellement affiché avant de dimensionner le canvas.
  const showAndRender=()=>{
   const rect=arenaScreen.getBoundingClientRect(),w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
