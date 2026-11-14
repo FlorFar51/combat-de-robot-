@@ -205,19 +205,55 @@ function collideBots(a,b,dt){
  a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
 function updatePuck(dt){
- puck.position.x+=puck.userData.vx*dt;puck.position.z+=puck.userData.vz*dt;
- const friction=Math.pow(.986,dt*60);puck.userData.vx*=friction;puck.userData.vz*=friction;
- if(puck.position.x>16.15&&Math.abs(puck.position.z)<2.05){scoreGoal('blue');return}
- if(puck.position.x<-16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('red');return}
- if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.8}
- if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.75}
- const puckBox=new THREE.Box3().setFromObject(puck);
- for(const b of [player,enemy]){b.puckTouchCooldown=Math.max(0,(b.puckTouchCooldown||0)-dt);const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z,cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y),localX=cs*dx-sn*dz,localZ=sn*dx+cs*dz;
-  // Le palet peut entrer dans le couloir central entre les deux fourches sans être repoussé par leurs hitboxes.
-  const insideForkChannel=Math.abs(localX)<.22&&localZ>.35&&localZ<2.8;
-  if(insideForkChannel){const fx=Math.sin(b.root.rotation.y),fz=Math.cos(b.root.rotation.y),blend=Math.min(1,dt*9),speed=Math.max(2.5,b.v+2.2);puck.userData.vx+=(fx*speed-puck.userData.vx)*blend;puck.userData.vz+=(fz*speed-puck.userData.vz)*blend;continue}
-  if(b.puckTouchCooldown>0)continue;const parts=robotHitboxes(b);let hit=false;for(const part of parts){if(part.mesh.userData.hockeyFork)continue;if(part.box.intersectsBox(puckBox)){hit=true;break}}if(hit){const d=Math.hypot(dx,dz)||1,nx=dx/d,nz=dz/d;puck.userData.vx+=nx*(Math.abs(b.v)*.7+2.5);puck.userData.vz+=nz*(Math.abs(b.v)*.7+2.5);puck.position.x+=nx*.18;puck.position.z+=nz*.18;b.puckTouchCooldown=.12}}
- const s=Math.hypot(puck.userData.vx,puck.userData.vz);if(s>19){puck.userData.vx*=17/s;puck.userData.vz*=17/s}
+ const radius=.43;
+ // Collision cercle (palet) / rectangle orienté (châssis et fourches) dans le repère local de chaque robot.
+ const hitRobot=b=>{
+  const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
+  const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
+  let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
+  let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
+  let collided=false;
+  const rect=(cx,cz,hx,hz)=>{
+   const qx=clamp(x,cx-hx,cx+hx),qz=clamp(z,cz-hz,cz+hz);
+   let ox=x-qx,oz=z-qz,d2=ox*ox+oz*oz;
+   if(d2>=radius*radius)return;
+   let nx,nz,depth;
+   if(d2>.000001){const d=Math.sqrt(d2);nx=ox/d;nz=oz/d;depth=radius-d}
+   else{const px=hx-Math.abs(x-cx),pz=hz-Math.abs(z-cz);if(px<pz){nx=x<cx?-1:1;nz=0;depth=radius+px}else{nx=0;nz=z<cz?-1:1;depth=radius+pz}}
+   x+=nx*(depth+.003);z+=nz*(depth+.003);
+   const vn=vx*nx+vz*nz;if(vn<0){vx-=1.35*vn*nx;vz-=1.35*vn*nz}
+   collided=true;
+  };
+  // Coque, puis les deux fourches physiques : aucune zone de passage fictive.
+  rect(0,0,1.025,.45);
+  for(const side of [-1,1]){
+   // Roue vue de dessus.
+   const wx=x-side*1.03,wz=z,d=Math.hypot(wx,wz),sum=radius+.32;
+   if(d<sum){const nx=d>.0001?wx/d:side,nz=d>.0001?wz/d:0,depth=sum-d;x+=nx*(depth+.003);z+=nz*(depth+.003);const vn=vx*nx+vz*nz;if(vn<0){vx-=1.35*vn*nx;vz-=1.35*vn*nz}collided=true}
+   // Longerons raccourcis, épaissis (dimensions réelles du modèle).
+   rect(side*.72,.70,.136,.191);
+  }
+  if(collided){
+   puck.position.x=b.root.position.x+cs*x+sn*z;
+   puck.position.z=b.root.position.z-sn*x+cs*z;
+   puck.userData.vx=cs*vx+sn*vz;
+   puck.userData.vz=-sn*vx+cs*vz;
+   b.puckTouchCooldown=.08;
+  }
+ };
+ // Sous-pas de 0,08 unité maximum : évite le tunneling du palet à grande vitesse.
+ const travel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
+ const steps=Math.max(1,Math.ceil(travel/.08)),step=dt/steps;
+ for(let i=0;i<steps;i++){
+  puck.position.x+=puck.userData.vx*step;puck.position.z+=puck.userData.vz*step;
+  for(const b of [player,enemy])hitRobot(b);
+  const friction=Math.pow(.986,step*60);puck.userData.vx*=friction;puck.userData.vz*=friction;
+  if(puck.position.x>16.15&&Math.abs(puck.position.z)<2.05){scoreGoal('blue');return}
+  if(puck.position.x<-16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('red');return}
+  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.8}
+  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.75}
+ }
+ const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=17/speed;puck.userData.vz*=17/speed}
 }
 function scoreGoal(team){if(goalLock>0)return;goalLock=.8;if(team==='blue')scoreBlue++;else scoreRed++;$('#status').textContent=team==='blue'?'BUT BLEU':'BUT ROUGE';resetPositions();if(scoreBlue>=3||scoreRed>=3)finish(scoreBlue>scoreRed?'BLEU':'ROUGE','Premier à trois buts.')}
 function updateSumo(){for(const [b,t] of [[player,'blue'],[enemy,'red']])if(Math.hypot(b.root.position.x,b.root.position.z)>8.4){if(t==='blue')roundRed++;else roundBlue++;resetPositions();if(roundBlue>=2||roundRed>=2)finish(roundBlue>roundRed?'BLEU':'ROUGE','Deux manches gagnantes.')}}
