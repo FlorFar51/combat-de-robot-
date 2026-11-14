@@ -171,10 +171,12 @@ function collideBots(a,b,dt){
  const px=(a.prevX??a.root.position.x),pz=(a.prevZ??a.root.position.z),rx=(b.prevX??b.root.position.x)-px,rz=(b.prevZ??b.root.position.z)-pz;
  const travel2=sx*sx+sz*sz,t=travel2>.0001?clamp(-(rx*sx+rz*sz)/travel2,0,1):0;
  const closest=Math.hypot(rx+sx*t,rz+sz*t),minDistance=mode==='hockey'?2.65:mode==='combat'?2.35:2.1;
- const touching=d<minDistance||closest<minDistance;
+ const forkContact=mode==='hockey'&&ah.some(x=>x.mesh.userData.hockeyFork&&bh.some(y=>y.mesh.userData.hockeyFork&&x.box.intersectsBox(y.box)));
+ const touching=d<minDistance||closest<minDistance||forkContact;
  if(touching){
   let nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;
   let nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0;
+  if(forkContact&&d>=minDistance){const nudge=clamp(.018+Math.abs(closing)*.008,.018,.085);a.root.position.x-=nx*nudge;b.root.position.x+=nx*nudge;a.root.position.z-=nz*nudge;b.root.position.z+=nz*nudge;a.v=Math.max(0,a.v*.985);b.v=Math.max(0,b.v*.985)}
   if(d<minDistance){
    const overlap=minDistance-d+.025;
    a.root.position.x-=nx*overlap*.5;b.root.position.x+=nx*overlap*.5;
@@ -216,6 +218,7 @@ function updatePuck(dt){
  // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
   const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
+  if(puck.position.y-.344>.42||puck.position.y+.344<-.12)return;
   const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
   let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
   let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
@@ -258,6 +261,7 @@ function updatePuck(dt){
  const steps=Math.max(1,Math.ceil(travel/.06)),step=dt/steps;
  for(let i=0;i<steps;i++){
   puck.position.x+=puck.userData.vx*step;puck.position.z+=puck.userData.vz*step;
+  const u=puck.userData;u.vy=Number(u.vy)||0;if(u.vy!==0||puck.position.y>.12){u.vy-=18*step;puck.position.y+=u.vy*step;if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.8)u.vy=-u.vy*.24;else u.vy=0}}
   for(const b of [player,enemy])hitRobot(b);
   // Glisse réglable de 0 à 100 : à 0, le palet s'arrête immédiatement.
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
@@ -292,7 +296,7 @@ function updateHud(){
  $('#contact-count').textContent='CONTACTS · BLEU '+(blueBot.contacts||0)+' / ROUGE '+(redBot.contacts||0);
 }
 function finish(winner,detail){if(ended)return;ended=true;if(net.role==='host')wsSend('end',{winner,detail});$('#end-title').textContent=winner==='NUL'?'ÉGALITÉ':winner==='BLEU'?'VICTOIRE':'DÉFAITE';$('#end-detail').textContent=detail;$('#end').classList.remove('hidden')}
-function attackPuck(bot){if(!puck||bot.cooldown>0)return;const d=Math.hypot(puck.position.x-bot.root.position.x,puck.position.z-bot.root.position.z);if(d<3){puck.userData.vx+=Math.sin(bot.root.rotation.y)*16;puck.userData.vz+=Math.cos(bot.root.rotation.y)*16;bot.cooldown=.3}}
+function attackPuck(bot){if(!puck||bot.cooldown>0)return;const d=Math.hypot(puck.position.x-bot.root.position.x,puck.position.z-bot.root.position.z),dy=puck.position.y-.12;if(Math.hypot(d,dy)<3&&Math.abs(dy)<.9){puck.userData.vx+=Math.sin(bot.root.rotation.y)*16;puck.userData.vz+=Math.cos(bot.root.rotation.y)*16;bot.cooldown=.3}}
 function setMode(m){
  mode=m;
  tunedSpeed=m==='hockey'?9.8:12;tunedRotation=14;
