@@ -8,7 +8,7 @@ const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
 const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
-let mode='combat',player,enemy,puck,ended=true,remaining=180,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0;
+let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0;
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
 const M={floor:mat(0x333333),black:mat(0x111111,.65,.35),steel:mat(0x888888,.8,.25),blue:mat(0x59636c,.7,.32),red:mat(0xaaaaaa,.7,.32),rubber:mat(0x090909,.1,.9),line:mat(0xeeeeee)};
@@ -34,9 +34,9 @@ function buildArena(){
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
  for(const x of [-halfWidth,halfWidth]){
   for(const z of [-5.3,5.3])add(new THREE.BoxGeometry(.3,.65,7.4),M.black,world,x,.12,z);
-  for(const z of [-1.55,1.55])add(new THREE.BoxGeometry(.12,1.15,.12),M.steel,world,x,.52,z);
-  add(new THREE.BoxGeometry(.12,.12,3.1),M.steel,world,x,1.08,0);
-  const net=add(new THREE.BoxGeometry(.8,.8,3.0),mat(0x222222),world,x+(x>0?.45:-.45),.48,0);net.material.transparent=true;net.material.opacity=.5;
+  for(const z of [-2.3,2.3])add(new THREE.BoxGeometry(.12,1.25,.12),M.steel,world,x,.57,z);
+  add(new THREE.BoxGeometry(.12,.12,4.6),M.steel,world,x,1.2,0);
+  const net=add(new THREE.BoxGeometry(.9,.9,4.5),mat(0x222222),world,x+(x>0?.5:-.5),.52,0);net.material.transparent=true;net.material.opacity=.5;
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -79,9 +79,9 @@ function makeRobot(team){
 }
 function resetPositions(){
  if(!player||!enemy)return;
- if(mode==='sumo'){player.root.position.set(-3,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(3,.12,0);enemy.root.rotation.y=-Math.PI/2}
+ if(mode==='sumo'){player.root.position.set(-4.6,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(4.6,.12,0);enemy.root.rotation.y=-Math.PI/2}
  else if(mode==='hockey'){player.root.position.set(-10,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(10,.12,0);enemy.root.rotation.y=-Math.PI/2}
- else{player.root.position.set(-5,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(5,.12,0);enemy.root.rotation.y=-Math.PI/2}
+ else{player.root.position.set(-7.5,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(7.5,.12,0);enemy.root.rotation.y=-Math.PI/2}
  for(const b of [player,enemy]){b.v=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0;b.contacts=0;b.contactCooldown=0;b.prevX=b.root.position.x;b.prevZ=b.root.position.z}
  if(puck){puck.position.set(0,.12,0);puck.userData.vx=puck.userData.vz=0}
 }
@@ -162,7 +162,7 @@ function collideBots(a,b,dt){
 function updatePuck(dt){
  puck.position.x+=puck.userData.vx*dt;puck.position.z+=puck.userData.vz*dt;
  const friction=Math.pow(.986,dt*60);puck.userData.vx*=friction;puck.userData.vz*=friction;
- if(puck.position.x>16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('blue');return}
+ if(puck.position.x>16.15&&Math.abs(puck.position.z)<2.05){scoreGoal('blue');return}
  if(puck.position.x<-16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('red');return}
  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.8}
  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.75}
@@ -212,21 +212,22 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){sawEnabled=false;remaining=120;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=false;$('#end').classList.add('hidden');$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
-function backMenu(){ended=true;sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
+function startMatch(){sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;$('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
+function backMenu(){ended=true;countdown=0;$('#countdown').classList.add('hidden');sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 $('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
 const touchActions={KeyW:'forward',KeyS:'backward',KeyA:'left',KeyD:'right',KeyE:'action'};document.querySelectorAll('[data-key]').forEach(b=>{const action=touchActions[b.dataset.key];let code=null;b.addEventListener('pointerdown',e=>{e.preventDefault();code=bindings[action]||b.dataset.key;keys[code]=true;b.setPointerCapture?.(e.pointerId)});const up=e=>{e.preventDefault();if(code)keys[code]=false;code=null};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up)});
 function resize(){const w=game.clientWidth,h=game.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);resize();
 function loop(){
  requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);const padInput=readController();document.querySelectorAll('[data-bind]').forEach(b=>b.classList.toggle('pressed',!!keys[bindings[b.dataset.bind]]));goalLock=Math.max(0,goalLock-dt);
+ if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='COMBAT !'}}
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
   const keyboardThrottle=Number(actionDown('forward'));
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
-  const steering=(padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer)*(mode==='hockey'?-1:1);
+  const steering=(padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer)*(mode==='hockey'?1:-1);
   const sawKey=actionDown('action'),sawButton=!!padInput?.sawPressed,sawInput=sawKey||sawButton;
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
