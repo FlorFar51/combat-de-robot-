@@ -49,3 +49,7 @@
 
 /* Visible build number on menu and during matches. */
 #build-version{position:absolute;z-index:9999;right:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.72);border:1px solid #444;color:#aaa;font:700 9px/1 Arial,sans-serif;letter-spacing:1px;pointer-events:none}
+
+
+/* Version V.10 visible sur tous les écrans. */
+#build-version{position:absolute;z-index:9999;right:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.78);border:1px solid #555;color:#d8e0e8;font:700 9px/1 Arial,sans-serif;letter-spacing:1px;pointer-events:none}
