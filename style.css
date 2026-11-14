@@ -53,3 +53,8 @@
 
 /* Version V.10 visible sur tous les écrans. */
 #build-version{position:absolute;z-index:9999;right:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.78);border:1px solid #555;color:#d8e0e8;font:700 9px/1 Arial,sans-serif;letter-spacing:1px;pointer-events:none}
+
+/* V.12 — make the WebGL canvas explicitly occupy the visible match viewport. */
+#arena-screen{position:absolute!important;inset:0!important;display:block}
+#arena-screen.hidden{display:none!important}
+#arena-screen>#arena-canvas{position:absolute!important;left:0!important;top:0!important;width:100%!important;height:100%!important;z-index:0!important;display:block!important;background:#080808!important}
