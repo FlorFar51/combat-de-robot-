@@ -5,8 +5,9 @@ const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(0,18,2
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;game.insertBefore(renderer.domElement,menu);
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
-const DEFAULT_BINDINGS={forward:'KeyZ',backward:'KeyS',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
+const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
 const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
+let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,remaining=180,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0;
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
@@ -65,10 +66,10 @@ function makeRobot(team){
  }else{
   // Large open C-shaped hook guides the puck toward the robot's mouth without enclosing it.
   add(new THREE.BoxGeometry(1.9,.4,1.55),body,root);
-  for(const s of [-1,1])for(const f of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.29,.29,.2,18),M.rubber,root,s*.87,-.1,f*.48);wheel.rotation.z=Math.PI/2}
-  const pts=[[-1,.12,-.48],[-1.22,.12,-.92],[-1.12,.12,-1.52],[-.72,.12,-1.92],[0,.12,-2.08],[.72,.12,-1.92],[1.12,.12,-1.52],[1.22,.12,-.92],[1,.12,-.48]].map(p=>new THREE.Vector3(...p));
+  for(const s of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.31,.31,.22,20),M.rubber,root,s*.91,-.1,.05);wheel.rotation.z=Math.PI/2}
+  const pts=[[-1,.12,.48],[-1.22,.12,.92],[-1.12,.12,1.52],[-.72,.12,1.92],[0,.12,2.08],[.72,.12,1.92],[1.12,.12,1.52],[1.22,.12,.92],[1,.12,.48]].map(p=>new THREE.Vector3(...p));
   const curve=new THREE.CatmullRomCurve3(pts);const hook=new THREE.Mesh(new THREE.TubeGeometry(curve,40,.13,10,false),accent);root.add(hook);
-  add(new THREE.BoxGeometry(.25,.12,.28),M.black,root,-1.05,.12,-1.5);add(new THREE.BoxGeometry(.25,.12,.28),M.black,root,1.05,.12,-1.5);
+  add(new THREE.BoxGeometry(.25,.12,.28),M.black,root,-1.05,.12,1.5);add(new THREE.BoxGeometry(.25,.12,.28),M.black,root,1.05,.12,1.5);
  }
  return {root,weapon,hp:100,v:0,alive:true,cooldown:0};
 }
@@ -159,10 +160,11 @@ function setMode(m){
 document.querySelectorAll('.mode-card').forEach(c=>c.addEventListener('click',()=>setMode(c.dataset.mode)));setMode('combat');
 function keyLabel(code){if(code==='Space')return 'ESPACE';if(code.startsWith('Key'))return code.slice(3);if(code.startsWith('Digit'))return code.slice(5);return code}
 function renderBindings(){document.querySelectorAll('[data-bind]').forEach(b=>b.textContent=keyLabel(bindings[b.dataset.bind]))}
-function openControls(){$('.menu-content').classList.add('hidden');$('#controls-panel').classList.remove('hidden');renderBindings();scanGamepads()}
+function openControls(){$('.menu-content').classList.add('hidden');$('#controls-panel').classList.remove('hidden');renderBindings();scanGamepads();$('#invert-throttle').checked=invertThrottle;$('#invert-steering').checked=invertSteering}
 function closeControls(){$('#controls-panel').classList.add('hidden');$('.menu-content').classList.remove('hidden')}
 $('#controls-tab').addEventListener('click',openControls);$('#controls-back').addEventListener('click',closeControls);
 document.querySelectorAll('[data-bind]').forEach(b=>b.addEventListener('click',()=>{if(waitingForBind)waitingForBind.classList.remove('waiting');waitingForBind=b;b.classList.add('waiting');b.textContent='APPUIE…'}));
+$('#invert-throttle').addEventListener('change',e=>{invertThrottle=e.target.checked});$('#invert-steering').addEventListener('change',e=>{invertSteering=e.target.checked});
 $('#reset-bindings').addEventListener('click',()=>{bindings={...DEFAULT_BINDINGS};try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}waitingForBind=null;renderBindings()});
 try{const saved=JSON.parse(localStorage.getItem('robotArenaBindings')||'null');if(saved)for(const k of Object.keys(DEFAULT_BINDINGS))if(typeof saved[k]==='string')bindings[k]=saved[k]}catch{}renderBindings();
 function scanGamepads(){const pads=navigator.getGamepads?navigator.getGamepads():[];activeGamepad=[...pads].find(p=>p&&p.connected)||null;const box=$('#gamepad-status');if(activeGamepad){box.classList.add('connected');box.querySelector('b').textContent='CONTRÔLEUR CONNECTÉ';box.querySelector('small').textContent=activeGamepad.id+' · '+activeGamepad.axes.length+' axes · '+activeGamepad.buttons.length+' boutons';$('#live-device').textContent='CONNECTÉ'}else{box.classList.remove('connected');box.querySelector('b').textContent='AUCUN CONTRÔLEUR DÉTECTÉ';box.querySelector('small').textContent='Connecte une manette ou un contrôleur FPV, puis appuie sur un bouton.';$('#live-device').textContent='EN ATTENTE'}}
