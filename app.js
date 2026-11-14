@@ -18,7 +18,7 @@ const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
 const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
-let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=65;
+let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=5,puckBounce=65;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
@@ -73,7 +73,7 @@ function makeRobot(team){
   ]);
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(v,3));g.computeVertexNormals();
   const shell=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:team==='blue'?0x68737d:0xb0b0b0,metalness:.6,roughness:.4,side:THREE.DoubleSide}));root.add(shell);
-  for(const s of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.34,.34,.22,18),M.rubber,root,s*1.02,-.12,0);wheel.rotation.z=Math.PI/2}
+  for(const s of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.34,.34,.22,18),M.rubber,root,s*1.02,-.12,-.58);wheel.rotation.z=Math.PI/2}
   add(new THREE.BoxGeometry(1.8,.08,.18),accent,root,0,-.05,-1.03);
  }else{
   // Châssis carré, deux roues latérales et deux longerons droits parallèles à l'avant.
@@ -86,14 +86,14 @@ function makeRobot(team){
   }
  }
  if(mode==='combat')weapon.scale.setScalar(.5);
- return {root,weapon,hp:100,v:0,alive:true,cooldown:0,contacts:0,contactCooldown:0,aiThink:0,aiOffsetX:0,aiOffsetZ:0,aiMode:'approach',aiThrottle:.8};
+ return {root,weapon,hp:100,v:0,slideX:0,slideZ:0,alive:true,cooldown:0,contacts:0,contactCooldown:0,aiThink:0,aiOffsetX:0,aiOffsetZ:0,aiMode:'approach',aiThrottle:.8};
 }
 function resetPositions(){
  if(!player||!enemy)return;
  if(mode==='sumo'){player.root.position.set(-4.6,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(4.6,.12,0);enemy.root.rotation.y=-Math.PI/2}
  else if(mode==='hockey'){player.root.position.set(-10,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(10,.12,0);enemy.root.rotation.y=-Math.PI/2}
  else{player.root.position.set(-7.5,.12,0);player.root.rotation.y=Math.PI/2;enemy.root.position.set(7.5,.12,0);enemy.root.rotation.y=-Math.PI/2}
- for(const b of [player,enemy]){b.v=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0;b.contacts=0;b.contactCooldown=0;b.prevX=b.root.position.x;b.prevZ=b.root.position.z}
+ for(const b of [player,enemy]){b.v=0;b.slideX=0;b.slideZ=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0;b.contacts=0;b.contactCooldown=0;b.prevX=b.root.position.x;b.prevZ=b.root.position.z}
  if(puck){puck.position.set(0,.12,0);puck.userData.vx=puck.userData.vz=0}
 }
 function buildMatch(){buildArena();player=makeRobot(net.role==='guest'?'red':'blue');enemy=makeRobot(net.role==='guest'?'blue':'red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
@@ -110,9 +110,9 @@ function drive(bot,dt,throttle,steer){
   // Même échelle physique : le réglage sumo agit sur la translation et la rotation séparément.
   const max=tunedSpeed*2,accel=max*2.2;
   bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
-  bot.root.rotation.y+=steer*tunedRotation*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
+  const oldAngle=bot.root.rotation.y,pivotX=bot.root.position.x-Math.sin(oldAngle)*.58,pivotZ=bot.root.position.z-Math.cos(oldAngle)*.58;bot.root.rotation.y+=steer*tunedRotation*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;bot.root.position.x=pivotX+Math.sin(bot.root.rotation.y)*.58;bot.root.position.z=pivotZ+Math.cos(bot.root.rotation.y)*.58;
  }
- bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
+ bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideX||0)*dt:0);bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideZ||0)*dt:0);if(mode==='sumo'){const grip=Math.pow(.90,dt*60);bot.slideX=(bot.slideX||0)*grip;bot.slideZ=(bot.slideZ||0)*grip}
  if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
  bot.cooldown=Math.max(0,bot.cooldown-dt);
 }
@@ -189,7 +189,7 @@ function collideBots(a,b,dt){
   const closing=(bvx-avx)*nx+(bvz-avz)*nz;
   if(closing<0){
    const impact=Math.min(1,Math.abs(closing)/8);
-   a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact));
+   if(mode!=='sumo'){a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact))}
   }
   if((a.contactCooldown<=0||b.contactCooldown<=0)&&Math.abs(closing)>1.2){
    if(closing< -1.2)a.contacts=(a.contacts||0)+1;
@@ -201,7 +201,12 @@ function collideBots(a,b,dt){
    if(weaponA&&a.cooldown<=0&&(a!==player||sawEnabled||(net.role==='host'&&net.remote.action))){b.hp=Math.max(0,b.hp-rand(8,14));a.cooldown=.35}
    if(weaponB&&b.cooldown<=0&&(b!==player||sawEnabled||(net.role==='host'&&net.remote.action))){a.hp=Math.max(0,a.hp-rand(8,14));b.cooldown=.35}
   }
-  if(mode==='sumo'){if(fa>0)b.v+=12*dt*10;if(fb>0)a.v+=12*dt*10}
+  if(mode==='sumo'){
+    const pushA=Math.max(0,avx*nx+avz*nz),pushB=Math.max(0,-(bvx*nx+bvz*nz));
+    const transfer=(target,normalX,normalZ,amount)=>{const impulse=clamp(amount*.72,0,5.5),forwardX=Math.sin(target.root.rotation.y),forwardZ=Math.cos(target.root.rotation.y),sideX=-forwardZ,sideZ=forwardX,sideSign=Math.sign(normalX*sideX+normalZ*sideZ)||1,side=impulse*.32;target.slideX=(target.slideX||0)+normalX*impulse+sideX*side*sideSign;target.slideZ=(target.slideZ||0)+normalZ*impulse+sideZ*side*sideSign;target.v=Math.max(0,target.v-impulse*.48)};
+    if(pushA>pushB+.25)transfer(b,nx,nz,pushA-pushB);
+    else if(pushB>pushA+.25)transfer(a,-nx,-nz,pushB-pushA);
+   }
  }
  a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
@@ -257,7 +262,7 @@ function updatePuck(dt){
   // Frottement faible et progressif : le palet conserve son élan puis ralentit sans s'arrêter brutalement.
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
   if(speed>0){
-   const deceleration=.25+(100-puckGlide)*.055+speed*.012;
+   const deceleration=Math.max(.025,.12-puckGlide*.015)+speed*.008;
    const nextSpeed=Math.max(0,speed-deceleration*step);
    const factor=nextSpeed/speed;
    puck.userData.vx*=factor;puck.userData.vz*=factor;
@@ -265,8 +270,8 @@ function updatePuck(dt){
   // But validé dès que le palet franchit la ligne dans l'ouverture de 4.6 unités.
   if(puck.position.x>15.7&&Math.abs(puck.position.z)<2.3){scoreGoal('blue');return}
   if(puck.position.x<-15.7&&Math.abs(puck.position.z)<2.3){scoreGoal('red');return}
-  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.72}
-  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.72}
+  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-(.05+puckBounce*.009)}
+  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-(.05+puckBounce*.009)}
  }
  const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
 }
@@ -286,14 +291,14 @@ function setMode(m){
  tunedSpeed=m==='hockey'?9.8:12;tunedRotation=14;
  const speedControl=$('#tune-speed'),rotationControl=$('#tune-rotation');
  if(speedControl&&rotationControl){const speedHalfRange=2;speedControl.min=(tunedSpeed-speedHalfRange).toFixed(1);speedControl.max=(tunedSpeed+speedHalfRange).toFixed(1);speedControl.value=tunedSpeed;rotationControl.min='9';rotationControl.max='19';rotationControl.value=tunedRotation;if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
-  if($('#puck-glide')){$('#puck-glide').value=String(puckGlide);$('#puck-glide-value').textContent=puckGlide+' %'}
+  if($('#puck-glide')){$('#puck-glide').value=String(puckGlide);$('#puck-glide-value').textContent=String(puckGlide)}if($('#puck-bounce')){$('#puck-bounce').value=String(puckBounce);$('#puck-bounce-value').textContent=puckBounce+' %'}
  document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('selected',c.dataset.mode===m));
  const data={
  combat:{title:'RÈGLES · COMBAT',items:['Duel dans une arène fermée.','Chaque contact réussi avec l’adversaire rapporte un point.','Le match dure jusqu’à la fin du chronomètre.','Le robot ayant provoqué le plus de contacts gagne.'],help:'Combat : percute ton adversaire pour marquer des contacts. E active la scie.',labels:['CONTACTS','CONTACTS']},
  sumo:{title:'RÈGLES · SUMO',items:['Deux robots se font face sur un dohyo circulaire.','Pousse l’adversaire hors du cercle.','Sortir du dohyo fait perdre la manche.','Le premier à gagner deux manches remporte le match.'],help:'Sumo : pousse l’adversaire hors du dohyo.',labels:['MANCHES','MANCHES']},
  hockey:{title:'RÈGLES · HOCKEY',items:['Deux robots s’affrontent sur une patinoire avec un palet.','Les cages sont placées à gauche et à droite du terrain.','Un but est marqué lorsque le palet franchit la ligne dans la cage.','Le premier à marquer trois buts gagne.'],help:'Hockey : E pour frapper le palet.',labels:['BUTS','BUTS']}
  }[m];
- $('#rules-title').textContent=data.title;$('#rules-list').innerHTML=data.items.map(x=>'<li>'+x+'</li>').join('');$('#mode-help').textContent=data.help;$('#label-blue').textContent=data.labels[0];$('#label-red').textContent=data.labels[1];$('#action-button').textContent=m==='hockey'?'TIR':'SCIE';$('#weight-setting').style.display=m==='combat'?'grid':'none';$('#puck-glide-setting').style.display=m==='hockey'?'grid':'none';$('.settings-grid').style.gridTemplateColumns=m==='combat'?'repeat(3,1fr)':'repeat(2,1fr)';
+ $('#rules-title').textContent=data.title;$('#rules-list').innerHTML=data.items.map(x=>'<li>'+x+'</li>').join('');$('#mode-help').textContent=data.help;$('#label-blue').textContent=data.labels[0];$('#label-red').textContent=data.labels[1];$('#action-button').textContent=m==='hockey'?'TIR':'SCIE';$('#weight-setting').style.display=m==='combat'?'grid':'none';$('#puck-glide-setting').style.display=m==='hockey'?'grid':'none';$('#puck-bounce-setting').style.display=m==='hockey'?'grid':'none';$('.settings-grid').style.gridTemplateColumns='repeat(2,minmax(0,1fr))';
 }
 
 function netStatus(message){const el=$('#network-status');if(el)el.textContent=message}
@@ -325,7 +330,7 @@ function connectNetwork(serverUrl){
    }else if(msg.type==='remote_input'){
     net.remote={throttle:msg.throttle||0,steering:msg.steering||0,action:!!msg.action};
    }else if(msg.type==='start'){
-    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??65),0,100);$('#puck-glide').value=String(puckGlide);$('#puck-glide-value').textContent=puckGlide+' %';startMatch(msg.startAt)}
+    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??5),0,20);puckBounce=clamp(Number(msg.puckBounce??65),0,100);$('#puck-glide').value=String(puckGlide);$('#puck-glide-value').textContent=String(puckGlide);$('#puck-bounce').value=String(puckBounce);$('#puck-bounce-value').textContent=puckBounce+' %';const receivedDuration=clamp(Number(msg.duration)||120,30,7200);$('#duration').value=[60,120,180,300,600].includes(receivedDuration)?String(receivedDuration):'custom';$('#custom-duration').value=String(Math.round(receivedDuration/60));$('#custom-duration-setting').style.display=$('#duration').value==='custom'?'grid':'none';startMatch(msg.startAt,receivedDuration)}
    }else if(msg.type==='state'&&net.role==='guest'){
     applyNetworkState(msg.state);
    }else if(msg.type==='end'&&net.role==='guest'){
@@ -354,12 +359,13 @@ async function joinOnlineLobby(){
  try{const params=new URLSearchParams(location.search),room=($('#join-room').value||params.get('room')||'').trim().toUpperCase(),password=$('#join-password').value.trim(),server=normalizeServerUrl($('#server-url').value||params.get('server')||'');if(!room)throw new Error('Identifiant du lobby manquant dans le lien.');if(!password)throw new Error('Saisis le mot de passe reçu de ton ami.');await connectNetwork(server);wsSend('join',{roomId:room,password})}
  catch(e){netStatus(e.message||String(e))}
 }
-$('#puck-glide').addEventListener('input',e=>{puckGlide=clamp(Number(e.target.value)||0,0,100);$('#puck-glide-value').textContent=puckGlide+' %'});
+$('#puck-glide').addEventListener('input',e=>{puckGlide=clamp(Number(e.target.value)||0,0,20);$('#puck-glide-value').textContent=String(puckGlide)});$('#puck-bounce').addEventListener('input',e=>{puckBounce=clamp(Number(e.target.value)||0,0,100);$('#puck-bounce-value').textContent=puckBounce+' %'});$('#duration').addEventListener('change',()=>{$('#custom-duration-setting').style.display=$('#duration').value==='custom'?'grid':'none'});
 $('#create-lobby').addEventListener('click',createOnlineLobby);
 $('#join-lobby').addEventListener('click',joinOnlineLobby);
 $('#copy-invite').addEventListener('click',()=>{const value=$('#room-link').value;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Lien copié')).catch(()=>{$('#room-link').select();netStatus('Copie le lien sélectionné')});else{$('#room-link').select();netStatus('Copie le lien sélectionné')}});
 $('#copy-password').addEventListener('click',()=>{const value=$('#room-password').textContent;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Mot de passe copié'))});
-function launchOnlineMatch(){if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');const startAt=Date.now()+3000;wsSend('start',{mode,difficulty:$('#difficulty').value,puckGlide,startAt});startMatch(startAt)}
+function getMatchDuration(){const selected=$('#duration').value;return selected==='custom'?clamp(Number($('#custom-duration').value)||2,1,120)*60:Number(selected)||120}
+ function launchOnlineMatch(){if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');const startAt=Date.now()+3000,duration=getMatchDuration();wsSend('start',{mode,difficulty:$('#difficulty').value,puckGlide,puckBounce,startAt,duration});startMatch(startAt,duration)}
 $('#start-online').addEventListener('click',launchOnlineMatch);
 $('#leave-online').addEventListener('click',()=>{wsSend('leave');if(net.ws)net.ws.close();net.role=null;net.roomId=null;$('#online-state').textContent='Hors du lobby';netStatus('Lobby quitté')});
 try{const params=new URLSearchParams(location.search);$('#server-url').value=params.get('server')||localStorage.getItem('robotArenaServerUrl')||'';if(params.get('room')){$('#join-room').value=params.get('room');$('#online-state').textContent='Invitation reçue · saisis le mot de passe'}}catch{}
@@ -389,9 +395,9 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(syncStartAt){
+function startMatch(syncStartAt,matchDuration){
  if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}
- sawEnabled=false;remaining=120;countdown=syncStartAt?Math.max(.05,(syncStartAt-Date.now())/1000):3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
+ sawEnabled=false;remaining=matchDuration?clamp(Number(matchDuration)||120,30,7200):getMatchDuration();countdown=syncStartAt?Math.max(.05,(syncStartAt-Date.now())/1000):3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
  $('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();
  buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);
  // V.14 : supprimer la sonde temporaire V.12 qui masquait le diagnostic après 9 s.
