@@ -199,7 +199,7 @@ function setMode(m){
  sumo:{title:'RÈGLES DU SUMO',items:['Deux robots commencent face à face sur un dohyo circulaire.','Le but est de pousser entièrement l’adversaire hors du cercle.','Sortir du dohyo fait perdre la manche.','Le premier robot à gagner deux manches remporte le match.','Les armes et dégâts sont désactivés : seule la poussée compte.'],help:'Sumo : pousse l’adversaire hors du cercle.',labels:['MANCHES','MANCHES']},
  hockey:{title:'RÈGLES DU HOCKEY',items:['Deux robots jouent sur une patinoire avec un palet et deux cages.','Pousse ou frappe le palet pour l’envoyer dans la cage adverse.','Un but est validé quand le palet franchit la ligne dans l’ouverture.','Le premier à marquer trois buts gagne.','Les contacts servent à disputer le palet, pas à détruire le robot.'],help:'Hockey : E frappe le palet dans la direction du robot.',labels:['BUTS','BUTS']}
  };
- const d=data[m];$('.rules-heading').firstElementChild.textContent=d.title;
+ const d=data[m];$('#rules-title').textContent=d.title;
  $('#rules-list').innerHTML=d.items.map(x=>'<li>'+x+'</li>').join('');
  $('#mode-help').textContent=d.help;
  $('#label-blue').textContent=d.labels[0];$('#label-red').textContent=d.labels[1];
