@@ -37,3 +37,11 @@
 #engine-diagnostic{position:absolute;z-index:10000;left:50%;top:50%;transform:translate(-50%,-50%);width:min(680px,calc(100% - 32px));padding:18px 20px;background:#180b0b;border:2px solid #e05252;color:#fff;font:700 14px/1.5 Arial,sans-serif;text-align:center;box-shadow:0 12px 48px #000;pointer-events:none}
 #engine-diagnostic.hidden{display:none!important}
 #engine-diagnostic:not(.error){background:#111;border-color:#999;color:#fff}
+
+
+/* Canvas placé dans l'écran de match pour garantir sa superposition avec l'arène. */
+#arena-screen{z-index:2!important;position:absolute;inset:0;background:#080808!important;overflow:hidden}
+#arena-screen>#arena-canvas{position:absolute!important;inset:0!important;z-index:0!important;width:100%!important;height:100%!important;display:block!important;visibility:visible!important;opacity:1!important;pointer-events:none}
+#arena-screen>#hud,#arena-screen>#help{z-index:3!important}
+#arena-screen>#touch-controls,#arena-screen>#tuning-panel{z-index:4!important}
+#arena-screen>#countdown,#arena-screen>#end{z-index:5!important}
