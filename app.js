@@ -202,7 +202,7 @@ function loop(){
   const keyboardThrottle=Number(actionDown('forward'));
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
-  const steering=padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer;
+  const steering=(padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer)*(mode==='hockey'?-1:1);
   const sawKey=actionDown('action'),sawButton=!!padInput?.sawPressed,sawInput=sawKey||sawButton;
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
