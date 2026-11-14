@@ -125,7 +125,7 @@ function collideBots(a,b,dt){
  const sz=(b.root.position.z-(b.prevZ??b.root.position.z))-(a.root.position.z-(a.prevZ??a.root.position.z));
  const px=(a.prevX??a.root.position.x),pz=(a.prevZ??a.root.position.z),rx=(b.prevX??b.root.position.x)-px,rz=(b.prevZ??b.root.position.z)-pz;
  const travel2=sx*sx+sz*sz,t=travel2>.0001?clamp(-(rx*sx+rz*sz)/travel2,0,1):0;
- const closest=Math.hypot(rx+sx*t,rz+sz*t),minDistance=mode==='hockey'?2.45:mode==='combat'?2.35:2.1;
+ const closest=Math.hypot(rx+sx*t,rz+sz*t),minDistance=mode==='hockey'?5.2:mode==='combat'?2.35:2.1;
  const touching=d<minDistance||closest<minDistance;
  if(touching){
   let nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;
