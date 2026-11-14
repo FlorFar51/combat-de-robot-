@@ -88,7 +88,7 @@ function drive(bot,dt,throttle,steer,boost=false){
  const turn=mode==='sumo'?11:mode==='hockey'?12:11;
  bot.root.rotation.y+=steer*turn*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
  bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
- if(mode==='combat'&&sawEnabled&&bot===player)bot.weapon.rotation.y+=dt*20;
+ if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
  bot.cooldown=Math.max(0,bot.cooldown-dt);
 }
 function aim(bot,x,z,aggression=1){const dx=x-bot.root.position.x,dz=z-bot.root.position.z,desired=Math.atan2(dx,dz);let d=((desired-bot.root.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI;return {throttle:Math.abs(d)>2.5?.15:aggression,steer:clamp(d*3.8,-1,1)}}
@@ -103,7 +103,7 @@ function collideBots(a,b,dt){
  if(d<=0||d>2.1)return;
  const nx=dx/d,nz=dz/d,over=2.1-d;a.root.position.x-=nx*over*.5;b.root.position.x+=nx*over*.5;a.root.position.z-=nz*over*.5;b.root.position.z+=nz*over*.5;
  const fa=Math.sin(a.root.rotation.y)*dx+Math.cos(a.root.rotation.y)*dz,fb=-Math.sin(b.root.rotation.y)*dx-Math.cos(b.root.rotation.y)*dz;
- if(mode==='combat'){if(fa>0&&a.cooldown<=0){b.hp=Math.max(0,b.hp-rand(8,14));a.cooldown=.4}if(fb>0&&b.cooldown<=0){a.hp=Math.max(0,a.hp-rand(8,14));b.cooldown=.4}}
+ if(mode==='combat'){if(fa>0&&a.cooldown<=0&&(a!==player||sawEnabled)){b.hp=Math.max(0,b.hp-rand(8,14));a.cooldown=.4}if(fb>0&&b.cooldown<=0&&(b!==player||sawEnabled)){a.hp=Math.max(0,a.hp-rand(8,14));b.cooldown=.4}}
  if(mode==='sumo'){if(fa>0)b.v+=12*dt*10;if(fb>0)a.v+=12*dt*10}
 }
 function updatePuck(dt){
@@ -138,7 +138,7 @@ function setMode(m){
 document.querySelectorAll('.mode-card').forEach(c=>c.addEventListener('click',()=>setMode(c.dataset.mode)));setMode('combat');
 function keyLabel(code){if(code==='Space')return 'ESPACE';if(code.startsWith('Key'))return code.slice(3);if(code.startsWith('Digit'))return code.slice(5);return code}
 function renderBindings(){document.querySelectorAll('[data-bind]').forEach(b=>b.textContent=keyLabel(bindings[b.dataset.bind]))}
-function openControls(){$('#mode-setup').classList.remove('hidden');$('.menu-content').classList.add('hidden');$('#controls-panel').classList.remove('hidden');renderBindings();scanGamepads()}
+function openControls(){$('.menu-content').classList.add('hidden');$('#controls-panel').classList.remove('hidden');renderBindings();scanGamepads()}
 function closeControls(){$('#controls-panel').classList.add('hidden');$('.menu-content').classList.remove('hidden')}
 $('#controls-tab').addEventListener('click',openControls);$('#controls-back').addEventListener('click',closeControls);
 document.querySelectorAll('[data-bind]').forEach(b=>b.addEventListener('click',()=>{if(waitingForBind)waitingForBind.classList.remove('waiting');waitingForBind=b;b.classList.add('waiting');b.textContent='APPUIE…'}));
