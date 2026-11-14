@@ -37,7 +37,7 @@
         <div class="control-column"><h3>CLAVIER <span>TOUCHES MODIFIABLES</span></h3><p class="control-hint">Clique sur une touche puis appuie sur celle que tu veux utiliser.</p>
           <div class="keybind-list">
             <div class="keybind-row"><span>AVANCER</span><button class="keybind" data-bind="forward">Z</button></div>
-            <div class="keybind-row"><span>RECULER</span><button class="keybind" data-bind="backward">S</button></div>
+            
             <div class="keybind-row"><span>ROTATION GAUCHE</span><button class="keybind" data-bind="left">Q</button></div>
             <div class="keybind-row"><span>ROTATION DROITE</span><button class="keybind" data-bind="right">D</button></div>
             
@@ -51,8 +51,9 @@
             <div class="axis-config"><div><b>2 · ROTATION</b><small>Un seul axe analogique</small></div><button class="assign-control" data-assign="steering">AXE 1 · X</button></div>
             <div class="axis-config"><div><b>3 · SCIE ON / OFF</b><small>Un bouton : active ou arrête la scie</small></div><button class="assign-control" data-assign="saw">BOUTON 1</button></div>
           </div>
+          <div class="invert-options"><label><input type="checkbox" id="invert-throttle"> INVERSER L’ACCÉLÉRATION</label><label><input type="checkbox" id="invert-steering"> INVERSER LA DIRECTION</label></div>
           <div class="live-test"><div class="live-title">TEST EN TEMPS RÉEL <span id="live-device">EN ATTENTE</span></div>
-            <div class="live-row"><span>AVANCE</span><div class="meter"><i id="throttle-meter"></i></div><b id="throttle-value">0%</b></div>
+            <div class="live-row"><span>AVANCE 0–100</span><div class="meter"><i id="throttle-meter"></i></div><b id="throttle-value">0%</b></div>
             <div class="live-row"><span>ROTATION</span><div class="meter"><i id="steering-meter"></i></div><b id="steering-value">0%</b></div>
             <div class="live-row"><span>SCIE</span><div class="saw-indicator" id="saw-indicator">ARRÊTÉE</div></div>
             <p id="assign-hint" class="control-hint">Clique sur une affectation pour détecter un axe ou un bouton.</p>
@@ -74,9 +75,9 @@
       </div>
       <div id="status">PRÉPARE-TOI</div>
     </div>
-    <div id="help"><b>COMMANDES</b><span>ZQSD / WASD : piloter</span><span id="mode-help">Combat : approche et attaque</span></div>
+    <div id="help"><b>COMMANDES</b><span>ZQSD / WASD : avancer et tourner</span><span id="mode-help">Combat : approche et attaque</span></div>
     <div id="touch-controls">
-      <div class="touch-pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyS">▼</button><button data-key="KeyD">▶</button></div></div>
+      <div class="touch-pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyD">▶</button></div></div>
       <div class="touch-actions"><button data-key="KeyE" id="action-button">SCIE</button></div>
     </div>
     <div id="end" class="hidden"><div class="end-kicker">FIN DU MATCH</div><h2 id="end-title">VICTOIRE</h2><p id="end-detail"></p><button id="rematch">REJOUER</button><button id="end-menu" class="secondary-button">RETOUR AU MENU</button></div>
