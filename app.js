@@ -70,8 +70,8 @@ function makeRobot(team){
   add(new THREE.BoxGeometry(1.65,.12,1.55),M.black,root,0,.23,0);
   for(const side of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.32,.32,.24,20),M.rubber,root,side*1.03,-.1,0);wheel.rotation.z=Math.PI/2}
   for(const side of [-1,1]){
-   add(new THREE.BoxGeometry(.16,.16,2.05),accent,root,side*.72,.13,1.85);
-   add(new THREE.BoxGeometry(.2,.2,.18),M.black,root,side*.72,.13,2.88);
+   add(new THREE.BoxGeometry(.16,.16,1.5375),accent,root,side*.72,.13,1.594);
+   add(new THREE.BoxGeometry(.2,.2,.18),M.black,root,side*.72,.13,2.36);
   }
  }
  if(mode==='combat')weapon.scale.setScalar(.5);
@@ -88,10 +88,19 @@ function resetPositions(){
 function buildMatch(){buildArena();player=makeRobot('blue');enemy=makeRobot('red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
 function drive(bot,dt,throttle,steer){
  if(!bot.alive)return;
- const max=mode==='sumo'?13:mode==='hockey'?15:14,accel=mode==='sumo'?13:mode==='hockey'?15:14;
- bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
- const turn=mode==='sumo'?11:mode==='hockey'?12:11;
- bot.root.rotation.y+=steer*turn*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
+ if(mode==='hockey'){
+  // Performances de référence : 2,7 m/s en ligne droite et 2,0 rad/s en rotation.
+  // L'accélération suit progressivement la consigne, tout en répondant rapidement.
+  const targetSpeed=clamp(throttle,0,1)*2.7;
+  bot.v+=(targetSpeed-bot.v)*(1-Math.exp(-7.5*dt));
+  bot.v=clamp(bot.v,0,2.7);
+  bot.root.rotation.y+=steer*2.0*dt;
+ }else{
+  const max=mode==='sumo'?13:14,accel=mode==='sumo'?13:14;
+  bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
+  const turn=mode==='sumo'?11:11;
+  bot.root.rotation.y+=steer*turn*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
+ }
  bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
  if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
  bot.cooldown=Math.max(0,bot.cooldown-dt);
@@ -227,7 +236,7 @@ function loop(){
   const keyboardThrottle=Number(actionDown('forward'));
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
-  const steering=(padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer)*(mode==='hockey'?1:-1);
+  const steering=(padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer)*-1;
   const sawKey=actionDown('action'),sawButton=!!padInput?.sawPressed,sawInput=sawKey||sawButton;
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
