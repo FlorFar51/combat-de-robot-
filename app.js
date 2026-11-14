@@ -85,7 +85,7 @@ function makeRobot(team){
   }
  }
  if(mode==='combat')weapon.scale.setScalar(.5);
- return {root,weapon,hp:100,v:0,alive:true,cooldown:0,contacts:0,contactCooldown:0};
+ return {root,weapon,hp:100,v:0,alive:true,cooldown:0,contacts:0,contactCooldown:0,aiThink:0,aiOffsetX:0,aiOffsetZ:0,aiMode:'approach',aiThrottle:.8};
 }
 function resetPositions(){
  if(!player||!enemy)return;
