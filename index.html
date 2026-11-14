@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-44">
-<link rel="stylesheet" href="./style.css?v=20261114-44">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-45">
+<link rel="stylesheet" href="./style.css?v=20261114-45">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
   <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
-  <div id="build-version" aria-label="Version du jeu">V.44</div>
+  <div id="build-version" aria-label="Version du jeu">V.45</div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
@@ -49,8 +49,8 @@
           <label id="custom-duration-setting" style="display:none">DURÉE PERSONNALISÉE (MIN)<input id="custom-duration" type="number" min="1" max="120" step="1" value="2"></label>
           <label>DIFFICULTÉ DE L'IA<select id="difficulty"><option value="easy">Facile</option><option value="normal" selected>Normale</option><option value="hard">Difficile</option></select></label>
           <label id="weight-setting">POIDS DU ROBOT<select id="weight-class"><option value="0.15">Antweight · 150 g</option><option value="1.5" selected>Beetleweight · 1,5 kg</option><option value="13.6">Featherweight · 13,6 kg</option><option value="30">Lightweight · 30 kg</option><option value="55">Middleweight · 55 kg</option><option value="110">Heavyweight · 110 kg</option></select></label>
-          <label id="puck-glide-setting" style="display:none">GLISSE DU PALET <span><output id="puck-glide-value">50 %</output></span><input id="puck-glide" type="range" min="0" max="100" step="1" value="50"></label>
-          <label id="puck-bounce-setting" style="display:none">REBOND DU PALET <span><output id="puck-bounce-value">65 %</output></span><input id="puck-bounce" type="range" min="0" max="100" step="1" value="65"></label>
+          <label id="puck-glide-setting" style="display:none">GLISSE DU PALET <span><output id="puck-glide-value">10 %</output></span><input id="puck-glide" type="range" min="0" max="100" step="1" value="10"></label>
+          <label id="puck-bounce-setting" style="display:none">REBOND DU PALET <span><output id="puck-bounce-value">10 %</output></span><input id="puck-bounce" type="range" min="0" max="100" step="1" value="10"></label>
         </div>
         <div id="rules" class="rules"><div class="rules-heading"><b id="rules-title">RÈGLES DU COMBAT</b><span>MODE SÉLECTIONNÉ</span></div><ul id="rules-list"></ul></div>
         <button id="test-mode" class="test-mode-button">MODE TEST : DÉSACTIVÉ</button>
@@ -139,6 +139,6 @@
   }, 7000);
 })();
 </script>
-<script type="module" src="./app.js?v=20261114-44" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
+<script type="module" src="./app.js?v=20261114-45" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
 </body>
 </html>
