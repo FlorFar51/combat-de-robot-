@@ -80,7 +80,7 @@ function makeRobot(team){
   add(new THREE.BoxGeometry(1.65,.12,.72),M.black,root,0,.23,.02);
   for(const side of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.32,.32,.24,20),M.rubber,root,side*1.03,-.1,0);wheel.rotation.z=Math.PI/2}
   for(const side of [-1,1]){
-   const rail=add(new THREE.BoxGeometry(.272,.272,.382),accent,root,side*.72,.13,.70);rail.userData.hockeyFork=true;
+   const rail=add(new THREE.BoxGeometry(.272,.272,1.528),accent,root,side*.72,.13,1.214);rail.userData.hockeyFork=true;
    
   }
  }
@@ -231,7 +231,7 @@ function updatePuck(dt){
    const wx=x-side*1.03,wz=z,d=Math.hypot(wx,wz),sum=radius+.32;
    if(d<sum){const nx=d>.0001?wx/d:side,nz=d>.0001?wz/d:0,depth=sum-d;x+=nx*(depth+.003);z+=nz*(depth+.003);const vn=vx*nx+vz*nz;if(vn<0){vx-=1.35*vn*nx;vz-=1.35*vn*nz}collided=true}
    // Longerons raccourcis, épaissis (dimensions réelles du modèle).
-   rect(side*.72,.70,.136,.191);
+   rect(side*.72,1.214,.136,.764);
   }
   if(collided){
    puck.position.x=b.root.position.x+cs*x+sn*z;
