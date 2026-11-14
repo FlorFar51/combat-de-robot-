@@ -88,18 +88,19 @@ function resetPositions(){
 function buildMatch(){buildArena();player=makeRobot('blue');enemy=makeRobot('red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
 function drive(bot,dt,throttle,steer){
  if(!bot.alive)return;
- if(mode==='hockey'){
-  // Performances de référence : 2,7 m/s en ligne droite et 2,0 rad/s en rotation.
-  // L'accélération suit progressivement la consigne, tout en répondant rapidement.
-  const targetSpeed=clamp(throttle,0,1)*2.7;
-  bot.v+=(targetSpeed-bot.v)*(1-Math.exp(-7.5*dt));
-  bot.v=clamp(bot.v,0,2.7);
+ if(mode==='combat'||mode==='hockey'){
+  // Échelle commune : 1 unité 3D = 0,5 m ; 2,7 m/s = 5,4 unités/s.
+  // Rotation : 2,0 rad/s. Accélération progressive mais nerveuse.
+  const maxSpeed=5.4,targetSpeed=clamp(throttle,0,1)*maxSpeed;
+  const response=mode==='hockey'?7.5:6.8;
+  bot.v+=(targetSpeed-bot.v)*(1-Math.exp(-response*dt));
+  bot.v=clamp(bot.v,0,maxSpeed);
   bot.root.rotation.y+=steer*2.0*dt;
  }else{
-  const max=mode==='sumo'?13:14,accel=mode==='sumo'?13:14;
+  // En sumo, on augmente uniquement la vitesse en ligne droite.
+  const max=15.5,accel=17;
   bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
-  const turn=mode==='sumo'?11:11;
-  bot.root.rotation.y+=steer*turn*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
+  bot.root.rotation.y+=steer*11*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
  }
  bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
  if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
@@ -107,10 +108,35 @@ function drive(bot,dt,throttle,steer){
 }
 function aim(bot,x,z,aggression=1){const dx=x-bot.root.position.x,dz=z-bot.root.position.z,desired=Math.atan2(dx,dz);let d=((desired-bot.root.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI;return {throttle:Math.abs(d)>2.5?.15:aggression,steer:clamp(d*3.8,-1,1)}}
 function updateAI(dt){
- const level=aiLevel==='easy'?.75:aiLevel==='hard'?1.25:1;
- const target=mode==='hockey'?puck:player.root;
- const t=aim(enemy,target.position.x,target.position.z,level);drive(enemy,dt,t.throttle,t.steer);
- if(mode==='hockey'&&Math.hypot(enemy.root.position.x-puck.position.x,enemy.root.position.z-puck.position.z)<2.5&&enemy.cooldown<=0){puck.userData.vx+=Math.sin(enemy.root.rotation.y)*13*level;puck.userData.vz+=Math.cos(enemy.root.rotation.y)*13*level;enemy.cooldown=.4}
+ const level=aiLevel==='easy'?.72:aiLevel==='hard'?1.18:1;
+ enemy.aiThink=(enemy.aiThink??rand(.2,.8))-dt;
+ // L'IA change régulièrement de stratégie et ne verrouille pas constamment sa cible.
+ if(enemy.aiThink<=0){
+  enemy.aiThink=rand(.55,1.35);
+  enemy.aiOffsetX=rand(-3.2,3.2);enemy.aiOffsetZ=rand(-3.2,3.2);
+  const roll=Math.random();
+  enemy.aiMode=mode==='hockey'?(roll<.48?'chase':roll<.78?'intercept':'defend'):roll<.68?'approach':roll<.86?'flank':'reposition';
+  enemy.aiThrottle=rand(.58,1);
+ }
+ let tx=player.root.position.x,tz=player.root.position.z;
+ if(mode==='hockey'){
+  const px=puck.position.x,pz=puck.position.z;
+  if(enemy.aiMode==='chase'){tx=px;tz=pz}
+  else if(enemy.aiMode==='intercept'){tx=px+clamp(puck.userData.vx*.35,-2.5,2.5);tz=pz+clamp(puck.userData.vz*.35,-2,2)}
+  else{tx=enemy.root.position.x>0?11:-11;tz=clamp(pz*.55,-4.8,4.8)}
+ }else if(enemy.aiMode==='flank'){
+  const dx=player.root.position.x-enemy.root.position.x,dz=player.root.position.z-enemy.root.position.z,len=Math.hypot(dx,dz)||1;
+  tx=player.root.position.x-dz/len*3;tz=player.root.position.z+dx/len*3;
+ }else if(enemy.aiMode==='reposition'){
+  tx=player.root.position.x+enemy.aiOffsetX*1.8;tz=player.root.position.z+enemy.aiOffsetZ*1.8;
+ }
+ tx+=enemy.aiOffsetX*.45;tz+=enemy.aiOffsetZ*.45;
+ const t=aim(enemy,tx,tz,level*(enemy.aiThrottle??.8));
+ const steer=clamp(t.steer+rand(-.22,.22),-1,1),throttle=clamp(t.throttle+rand(-.12,.12),0,1);
+ drive(enemy,dt,throttle,steer);
+ if(mode==='hockey'&&Math.hypot(enemy.root.position.x-puck.position.x,enemy.root.position.z-puck.position.z)<2.5&&enemy.cooldown<=0&&Math.random()<.72){
+  puck.userData.vx+=Math.sin(enemy.root.rotation.y)*13*level;puck.userData.vz+=Math.cos(enemy.root.rotation.y)*13*level;enemy.cooldown=rand(.35,.65);
+ }
 }
 function robotHitboxes(bot){
  bot.root.updateMatrixWorld(true);const parts=[];
