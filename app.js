@@ -16,7 +16,7 @@ try {
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
-const controllerMap={throttle:{axis:2,invert:-1},steering:{axis:0,invert:1},saw:{button:1}};
+const controllerMap={throttle:{axis:2,invert:1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=5,puckBounce=65;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
@@ -108,11 +108,11 @@ function drive(bot,dt,throttle,steer){
   bot.root.rotation.y+=steer*tunedRotation*dt;
  }else{
   // Même échelle physique : le réglage sumo agit sur la translation et la rotation séparément.
-  const max=tunedSpeed*2,accel=max*2.2;
-  bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
+  const max=tunedSpeed*2,target=clamp(throttle,0,1)*max,accel=max*3.2,brake=max*12;
+  if(target>bot.v)bot.v=Math.min(target,bot.v+accel*dt);else bot.v=Math.max(target,bot.v-brake*dt);bot.v=clamp(bot.v,0,max);
   const oldAngle=bot.root.rotation.y,pivotX=bot.root.position.x-Math.sin(oldAngle)*.58,pivotZ=bot.root.position.z-Math.cos(oldAngle)*.58;bot.root.rotation.y+=steer*tunedRotation*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;bot.root.position.x=pivotX+Math.sin(bot.root.rotation.y)*.58;bot.root.position.z=pivotZ+Math.cos(bot.root.rotation.y)*.58;
  }
- bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideX||0)*dt:0);bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideZ||0)*dt:0);if(mode==='sumo'){const grip=Math.pow(.90,dt*60);bot.slideX=(bot.slideX||0)*grip;bot.slideZ=(bot.slideZ||0)*grip}
+ bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideX||0)*dt:0);bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideZ||0)*dt:0);if(mode==='sumo'){const grip=Math.pow(.72,dt*60);bot.slideX=(bot.slideX||0)*grip;bot.slideZ=(bot.slideZ||0)*grip}
  if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
  bot.cooldown=Math.max(0,bot.cooldown-dt);
 }
@@ -392,7 +392,7 @@ document.querySelectorAll('[data-assign]').forEach(b=>b.addEventListener('click'
 function readController(){const pads=navigator.getGamepads?navigator.getGamepads():[];const p=activeGamepad&&pads[activeGamepad.index]?.connected?pads[activeGamepad.index]:[...pads].find(x=>x&&x.connected);if(!p){activeGamepad=null;$('#throttle-meter').style.width='0%';$('#throttle-meter').style.left='0%';$('#throttle-meter').style.transform='none';$('#steering-meter').style.width='0%';$('#throttle-value').textContent='0%';$('#steering-value').textContent='0%';$('#saw-indicator').textContent=sawEnabled?'ACTIVÉE':'ARRÊTÉE';$('#saw-indicator').classList.toggle('active',sawEnabled);return}activeGamepad=p;const axes=p.axes||[],buttons=p.buttons||[];
  if(assigning){if(assigning.dataset.assign==='saw'){const i=buttons.findIndex(x=>x&&x.pressed);if(i>=0){controllerMap.saw.button=i;assigning.textContent='BOUTON '+(i+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Bouton affecté. Teste-le en appuyant dessus.'}}else{let best=-1,bestVal=.55;for(let i=0;i<axes.length;i++){const v=Math.abs(axes[i]||0);if(v>bestVal){best=i;bestVal=v}}if(best>=0){const kind=assigning.dataset.assign;controllerMap[kind]={axis:best,invert:(axes[best]||0)<0?1:-1};assigning.textContent='AXE '+(best+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Axe affecté. Déplace-le pour vérifier la réponse en direct.'}}}
  const t=controllerMap.throttle,s=controllerMap.steering;let rawThrottle=t.axis<axes.length?(axes[t.axis]||0)*t.invert:0,throttle=invertThrottle?Math.max(0,-rawThrottle):Math.max(0,rawThrottle),steering=s.axis<axes.length?(axes[s.axis]||0)*s.invert:0;steering*=invertSteering?-1:1;throttle=Math.abs(throttle)<.12?0:throttle;steering=Math.abs(steering)<.12?0:steering;
- const sawIndex=controllerMap.saw.button,sawPressed=!!buttons[sawIndex]?.pressed;lastControllerSaw=sawPressed;
+ const sawIndex=controllerMap.saw.button,sawPressed=!!buttons[sawIndex]?.pressed;if(ended&&!$('#controls-panel').classList.contains('hidden')&&sawPressed&&!lastControllerSaw)sawEnabled=!sawEnabled;lastControllerSaw=sawPressed;
  $('#throttle-meter').style.width=throttle*100+'%';$('#throttle-meter').style.left='0%';$('#throttle-meter').style.transform='none';$('#steering-meter').style.width=Math.abs(steering)*50+'%';$('#steering-meter').style.left='50%';$('#steering-meter').style.transform='translateX('+(steering<0?'-100%':'0')+')';$('#throttle-value').textContent=Math.round(throttle*100)+'%';$('#steering-value').textContent=Math.round(steering*100)+'%';
  const indicator=$('#saw-indicator');indicator.textContent=sawEnabled?'ACTIVÉE':'ARRÊTÉE';indicator.classList.toggle('active',sawEnabled);
  return {throttle,steering,sawPressed};}
