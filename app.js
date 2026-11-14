@@ -300,9 +300,13 @@ function loop(){
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
   player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z;
-  drive(player,dt,f,steering);updateAI(dt);confineRobot(player);confineRobot(enemy);
-  if(mode==='hockey'){collideBots(player,enemy,dt);updatePuck(dt);if(sawInput)attackPuck(player)}
-  else{collideBots(player,enemy,dt);if(mode==='sumo')updateSumo();else if(player.hp<=0||enemy.hp<=0)finish(player.hp>enemy.hp?'BLEU':'ROUGE','Robot neutralisé.')}
+  const badBot=b=>!b||![b.root.position.x,b.root.position.y,b.root.position.z,b.root.rotation.x,b.root.rotation.y,b.root.rotation.z,b.v].every(Number.isFinite);
+  const reportBad=stage=>{if(badBot(player)||badBot(enemy)){ended=true;window.__showArenaDiagnostic?.('V.18 — NaN détecté '+stage+' · BLEU pos '+[player.root.position.x,player.root.position.y,player.root.position.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' rot '+[player.root.rotation.x,player.root.rotation.y,player.root.rotation.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' · ROUGE pos '+[enemy.root.position.x,enemy.root.position.y,enemy.root.position.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' rot '+[enemy.root.rotation.x,enemy.root.rotation.y,enemy.root.rotation.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' · vitesses '+player.v.toFixed(2)+' / '+enemy.v.toFixed(2),true);return true}return false};
+  drive(player,dt,f,steering);if(reportBad('après conduite joueur'))return;
+  updateAI(dt);if(reportBad('après IA'))return;
+  confineRobot(player);confineRobot(enemy);if(reportBad('après limites'))return;
+  if(mode==='hockey'){collideBots(player,enemy,dt);if(reportBad('après collision robots'))return;updatePuck(dt);if(sawInput)attackPuck(player)}
+  else{collideBots(player,enemy,dt);if(reportBad('après collision robots'))return;if(mode==='sumo')updateSumo();else if(player.hp<=0||enemy.hp<=0)finish(player.hp>enemy.hp?'BLEU':'ROUGE','Robot neutralisé.')}
   updateHud();
  }
  const target=player?new THREE.Vector3((player.root.position.x+enemy.root.position.x)*.5,0,(player.root.position.z+enemy.root.position.z)*.5):new THREE.Vector3(0,0,0);
