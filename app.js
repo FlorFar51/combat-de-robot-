@@ -27,7 +27,7 @@ function buildArena(){
   const grid=new THREE.GridHelper(19,24,0x777777,0x444444);grid.position.y=-.03;world.add(grid);return;
  }
  // Rink: two goals centered on the short end walls, with open mouths facing the rink.
- for(const [x,z,w,d] of [[-10,0,.3,14],[10,0,.3,14],[0,-7,6.5,.3],[-8.3,-7,3.4,.3],[8.3,-7,3.4,.3],[0,7,6.5,.3],[-8.3,7,3.4,.3],[8.3,7,3.4,.3]])add(new THREE.BoxGeometry(w,.65,d),M.black,world,x,.12,z);
+ for(const [x,z,w,d] of [[-10,0,.3,14],[10,0,.3,14],[-5.875,-7,8.25,.3],[5.875,-7,8.25,.3],[-5.875,7,8.25,.3],[5.875,7,8.25,.3]])add(new THREE.BoxGeometry(w,.65,d),M.black,world,x,.12,z);
  for(const z of [-7,7]){
   const back=z<0?-8.25:8.25;
   for(const x of [-1.7,1.7])add(new THREE.BoxGeometry(.12,1.15,1.25),M.steel,world,x,.52,z);
