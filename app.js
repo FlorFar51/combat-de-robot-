@@ -24,13 +24,14 @@ function buildArena(){
   for(const x of [-.8,.8])add(new THREE.BoxGeometry(.1,.02,1),M.line,world,x,-.09,0);
   return;
  }
- floorBox(20,14,mode==='hockey'?mat(0x666666):M.floor);
+ const arenaWidth=28,halfWidth=arenaWidth/2;
+ floorBox(arenaWidth,14,mode==='hockey'?mat(0x666666):M.floor);
  if(mode==='combat'){
-  for(const [x,z,w,d] of [[0,-7,20,.35],[0,7,20,.35],[-10,0,.35,14],[10,0,.35,14]])add(new THREE.BoxGeometry(w,1,d),M.black,world,x,.25,z);
-  const grid=new THREE.GridHelper(19,24,0x777777,0x444444);grid.position.y=-.03;world.add(grid);return;
+  for(const [x,z,w,d] of [[0,-7,arenaWidth,.35],[0,7,arenaWidth,.35],[-halfWidth,0,.35,14],[halfWidth,0,.35,14]])add(new THREE.BoxGeometry(w,1,d),M.black,world,x,.25,z);
+  const grid=new THREE.GridHelper(arenaWidth-1,32,0x777777,0x444444);grid.position.y=-.03;world.add(grid);return;
  }
- // Rink: two goals centered on the short end walls, with open mouths facing the rink.
- for(const [x,z,w,d] of [[-10,0,.3,14],[10,0,.3,14],[-5.875,-7,8.25,.3],[5.875,-7,8.25,.3],[-5.875,7,8.25,.3],[5.875,7,8.25,.3]])add(new THREE.BoxGeometry(w,.65,d),M.black,world,x,.12,z);
+ // Patinoire élargie : les deux cages restent centrées sur les petits côtés.
+ for(const [x,z,w,d] of [[-halfWidth,0,.3,14],[halfWidth,0,.3,14],[-6.875,-7,14.25,.3],[6.875,-7,14.25,.3],[-6.875,7,14.25,.3],[6.875,7,14.25,.3]])add(new THREE.BoxGeometry(w,.65,d),M.black,world,x,.12,z);
  for(const z of [-7,7]){
   const back=z<0?-8.25:8.25;
   for(const x of [-1.7,1.7])add(new THREE.BoxGeometry(.12,1.15,1.25),M.steel,world,x,.52,z);
@@ -64,12 +65,14 @@ function makeRobot(team){
   for(const s of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.34,.34,.22,18),M.rubber,root,s*1.02,-.12,0);wheel.rotation.z=Math.PI/2}
   add(new THREE.BoxGeometry(1.8,.08,.18),accent,root,0,-.05,-1.03);
  }else{
-  // Large open C-shaped hook guides the puck toward the robot's mouth without enclosing it.
-  add(new THREE.BoxGeometry(1.9,.4,1.55),body,root);
-  for(const s of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.31,.31,.22,20),M.rubber,root,s*.91,-.1,.05);wheel.rotation.z=Math.PI/2}
-  const pts=[[-1,.12,.48],[-1.22,.12,.92],[-1.12,.12,1.52],[-.72,.12,1.92],[0,.12,2.08],[.72,.12,1.92],[1.12,.12,1.52],[1.22,.12,.92],[1,.12,.48]].map(p=>new THREE.Vector3(...p));
-  const curve=new THREE.CatmullRomCurve3(pts);const hook=new THREE.Mesh(new THREE.TubeGeometry(curve,40,.13,10,false),accent);root.add(hook);
-  add(new THREE.BoxGeometry(.25,.12,.28),M.black,root,-1.05,.12,1.5);add(new THREE.BoxGeometry(.25,.12,.28),M.black,root,1.05,.12,1.5);
+  // Châssis carré, deux roues latérales et deux longerons droits parallèles à l'avant.
+  add(new THREE.BoxGeometry(2.05,.4,2.05),body,root);
+  add(new THREE.BoxGeometry(1.65,.12,1.55),M.black,root,0,.23,0);
+  for(const side of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.32,.32,.24,20),M.rubber,root,side*1.03,-.1,0);wheel.rotation.z=Math.PI/2}
+  for(const side of [-1,1]){
+   add(new THREE.BoxGeometry(.16,.16,2.05),accent,root,side*.72,.13,1.85);
+   add(new THREE.BoxGeometry(.2,.2,.18),M.black,root,side*.72,.13,2.88);
+  }
  }
  return {root,weapon,hp:100,v:0,alive:true,cooldown:0};
 }
@@ -106,7 +109,7 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const bounds=new THREE.Box3().setFromObject(bot.root),minX=-9.72,maxX=9.72,minZ=-6.72,maxZ=6.72;
+ const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?-13.72:-13.72,maxX=13.72,minZ=-6.72,maxZ=6.72;
  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
@@ -196,7 +199,7 @@ function loop(){
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
-  const keyboardThrottle=Number(actionDown('forward'))-Number(actionDown('backward'));
+  const keyboardThrottle=Number(actionDown('forward'));
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
   const steering=padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer;
