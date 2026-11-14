@@ -8,7 +8,7 @@ const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
 const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
-let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0;
+let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0;
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
 const M={floor:mat(0x333333),black:mat(0x111111,.65,.35),steel:mat(0x888888,.8,.25),blue:mat(0x59636c,.7,.32),red:mat(0xaaaaaa,.7,.32),rubber:mat(0x090909,.1,.9),line:mat(0xeeeeee)};
@@ -89,18 +89,17 @@ function buildMatch(){buildArena();player=makeRobot('blue');enemy=makeRobot('red
 function drive(bot,dt,throttle,steer){
  if(!bot.alive)return;
  if(mode==='combat'||mode==='hockey'){
-  // Échelle commune : 1 unité 3D = 0,5 m ; 2,7 m/s = 5,4 unités/s.
-  // Rotation : 2,0 rad/s. Accélération progressive mais nerveuse.
-  const maxSpeed=5.4,targetSpeed=clamp(throttle,0,1)*maxSpeed;
+  // 1 unité 3D = 0,5 m : convertir la consigne physique en vitesse du terrain.
+  const maxSpeed=tunedSpeed*2,targetSpeed=clamp(throttle,0,1)*maxSpeed;
   const response=mode==='hockey'?7.5:6.8;
   bot.v+=(targetSpeed-bot.v)*(1-Math.exp(-response*dt));
   bot.v=clamp(bot.v,0,maxSpeed);
-  bot.root.rotation.y+=steer*2.0*dt;
+  bot.root.rotation.y+=steer*tunedRotation*dt;
  }else{
-  // En sumo, on augmente uniquement la vitesse en ligne droite.
-  const max=15.5,accel=17;
+  // Même échelle physique : le réglage sumo agit sur la translation et la rotation séparément.
+  const max=tunedSpeed*2,accel=max*2.2;
   bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
-  bot.root.rotation.y+=steer*11*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
+  bot.root.rotation.y+=steer*tunedRotation*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
  }
  bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
  if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
@@ -217,7 +216,11 @@ function updateHud(){
 function finish(winner,detail){if(ended)return;ended=true;$('#end-title').textContent=winner==='BLEU'?'VICTOIRE':'DÉFAITE';$('#end-detail').textContent=detail;$('#end').classList.remove('hidden')}
 function attackPuck(bot){if(!puck||bot.cooldown>0)return;const d=Math.hypot(puck.position.x-bot.root.position.x,puck.position.z-bot.root.position.z);if(d<3){puck.userData.vx+=Math.sin(bot.root.rotation.y)*16;puck.userData.vz+=Math.cos(bot.root.rotation.y)*16;bot.cooldown=.3}}
 function setMode(m){
- mode=m;document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('selected',c.dataset.mode===m));
+ mode=m;
+ tunedSpeed=m==='sumo'?7.8:2.7;tunedRotation=m==='sumo'?11:2.0;
+ const speedControl=$('#tune-speed'),rotationControl=$('#tune-rotation');
+ if(speedControl&&rotationControl){speedControl.value=tunedSpeed;rotationControl.value=tunedRotation;$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
+ document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('selected',c.dataset.mode===m));
  const data={
  combat:{title:'RÈGLES · COMBAT',items:['Duel dans une arène fermée.','L’arme rotative inflige des dégâts sur les impacts.','Un robot neutralisé ou à 0 % est éliminé.','À la fin du temps, le plus d’intégrité gagne.'],help:'Combat : E pour une attaque supplémentaire.',labels:['INTÉGRITÉ','INTÉGRITÉ']},
  sumo:{title:'RÈGLES · SUMO',items:['Deux robots se font face sur un dohyo circulaire.','Pousse l’adversaire hors du cercle.','Sortir du dohyo fait perdre la manche.','Le premier à gagner deux manches remporte le match.'],help:'Sumo : pousse l’adversaire hors du dohyo.',labels:['MANCHES','MANCHES']},
@@ -232,6 +235,8 @@ function openControls(){$('.menu-content').classList.add('hidden');$('#controls-
 function closeControls(){$('#controls-panel').classList.add('hidden');$('.menu-content').classList.remove('hidden')}
 $('#controls-tab').addEventListener('click',openControls);$('#controls-back').addEventListener('click',closeControls);
 document.querySelectorAll('[data-bind]').forEach(b=>b.addEventListener('click',()=>{if(waitingForBind)waitingForBind.classList.remove('waiting');waitingForBind=b;b.classList.add('waiting');b.textContent='APPUIE…'}));
+$('#tune-speed').addEventListener('input',e=>{tunedSpeed=Number(e.target.value);$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s'});
+$('#tune-rotation').addEventListener('input',e=>{tunedRotation=Number(e.target.value);$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'});
 $('#invert-throttle').addEventListener('change',e=>{invertThrottle=e.target.checked});$('#invert-steering').addEventListener('change',e=>{invertSteering=e.target.checked});
 $('#reset-bindings').addEventListener('click',()=>{bindings={...DEFAULT_BINDINGS};try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}waitingForBind=null;renderBindings()});
 try{const saved=JSON.parse(localStorage.getItem('robotArenaBindings')||'null');if(saved)for(const k of Object.keys(DEFAULT_BINDINGS))if(typeof saved[k]==='string')bindings[k]=saved[k]}catch{}renderBindings();
@@ -247,7 +252,7 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;$('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
+function startMatch(){sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;$('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);resize();camera.position.set(0,mode==='sumo'?19:mode==='combat'?27:20,mode==='combat'?34:mode==='hockey'?27:19);camera.lookAt(0,0,0);renderer.render(scene,camera)}
 function backMenu(){ended=true;countdown=0;$('#countdown').classList.add('hidden');sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 $('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
@@ -255,10 +260,11 @@ const touchActions={KeyW:'forward',KeyS:'backward',KeyA:'left',KeyD:'right',KeyE
 function resize(){const w=game.clientWidth,h=game.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);resize();
 function loop(){
  requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);const padInput=readController();document.querySelectorAll('[data-bind]').forEach(b=>b.classList.toggle('pressed',!!keys[bindings[b.dataset.bind]]));goalLock=Math.max(0,goalLock-dt);
- if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='COMBAT !'}}
+ if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='DÉPART !';if(player&&enemy){player.v=0;enemy.v=0;player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z}resize();renderer.render(scene,camera)}}
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
+  $('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s';
   const keyboardThrottle=Number(actionDown('forward'));
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
@@ -275,4 +281,5 @@ function loop(){
  const target=player?new THREE.Vector3((player.root.position.x+enemy.root.position.x)*.5,0,(player.root.position.z+enemy.root.position.z)*.5):new THREE.Vector3(0,0,0);
  camera.position.lerp(new THREE.Vector3(target.x,mode==='sumo'?19:mode==='combat'?27:20,target.z+(mode==='combat'?34:mode==='hockey'?27:19)),.045);camera.lookAt(target);renderer.render(scene,camera);
 }
+window.addEventListener('error',e=>{const status=$('#status');if(status)status.textContent='ERREUR JEU : '+(e.message||'voir console')});
 loop();
