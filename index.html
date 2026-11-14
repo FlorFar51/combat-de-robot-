@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="stylesheet" href="./style.css?v=20261114-6">
+<link rel="stylesheet" href="./style.css?v=20261114-7">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
+  <canvas id="arena-canvas" aria-label="Arène 3D"></canvas>
+  <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
@@ -86,6 +88,30 @@
   </section>
   <div id="loading" class="hidden">CHARGEMENT DE L'ARÈNE…</div>
 </main>
-<script type="module" src="./app.js?v=20261114-6"></script>
+<script>
+(() => {
+  const panel = document.getElementById('engine-diagnostic');
+  window.__showArenaDiagnostic = (message, error = false) => {
+    if (!panel) return;
+    panel.textContent = message;
+    panel.classList.remove('hidden');
+    panel.classList.toggle('error', !!error);
+  };
+  window.__hideArenaDiagnostic = () => panel?.classList.add('hidden');
+  window.addEventListener('error', event => {
+    const message = event.message || event.target?.src || 'Ressource non chargée';
+    window.__showArenaDiagnostic('ERREUR DE CHARGEMENT : ' + message, true);
+  });
+  window.addEventListener('unhandledrejection', event => {
+    window.__showArenaDiagnostic('ERREUR MODULE 3D : ' + String(event.reason?.message || event.reason || 'chargement impossible'), true);
+  });
+  setTimeout(() => {
+    if (!window.__arenaRendererReady) {
+      window.__showArenaDiagnostic('Le moteur 3D ne démarre pas. Vérifie le chargement de Three.js et la disponibilité de WebGL.', true);
+    }
+  }, 7000);
+})();
+</script>
+<script type="module" src="./app.js?v=20261114-7" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
 </body>
 </html>

@@ -1,8 +1,18 @@
 import * as THREE from 'three';
-const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen');
+const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen'), renderCanvas=$('#arena-canvas');
+window.__arenaModuleStarted=true;
+window.__showArenaDiagnostic?.('Module chargé : initialisation du moteur 3D…');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x080808);scene.fog=new THREE.Fog(0x080808,45,95);
 const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(0,18,20);
-const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x080808,1);arenaScreen.insertBefore(renderer.domElement,arenaScreen.firstChild);renderer.domElement.setAttribute('aria-hidden','true');renderer.domElement.style.cssText='position:absolute;inset:0;z-index:0;width:100%;height:100%;display:block;background:#080808';arenaScreen.style.backgroundColor='#080808';
+let renderer=null;
+try {
+ renderer=new THREE.WebGLRenderer({canvas:renderCanvas,antialias:true,alpha:false});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+ renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x080808,1);
+ window.__arenaRendererReady=true;window.__hideArenaDiagnostic?.();
+} catch(error) {
+ window.__showArenaDiagnostic?.('WEBGL INDISPONIBLE : '+(error?.message||String(error)),true);
+}
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
@@ -253,15 +263,15 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;$('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);resize();camera.position.set(0,mode==='sumo'?19:mode==='combat'?27:20,mode==='combat'?34:mode==='hockey'?27:19);camera.lookAt(0,0,0);renderer.setClearColor(0x080808,1);renderer.render(scene,camera);requestAnimationFrame(()=>{resize();renderer.render(scene,camera)})}
+function startMatch(){if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;$('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);resize();camera.position.set(0,mode==='sumo'?19:mode==='combat'?27:20,mode==='combat'?34:mode==='hockey'?27:19);camera.lookAt(0,0,0);try{renderer.setClearColor(0x080808,1);renderer.render(scene,camera);requestAnimationFrame(()=>{resize();renderer.render(scene,camera)})}catch(error){window.__showArenaDiagnostic?.('ERREUR AU DÉMARRAGE DU RENDU : '+(error?.message||String(error)),true)}}
 function backMenu(){ended=true;countdown=0;$('#countdown').classList.add('hidden');sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 $('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
 const touchActions={KeyW:'forward',KeyS:'backward',KeyA:'left',KeyD:'right',KeyE:'action'};document.querySelectorAll('[data-key]').forEach(b=>{const action=touchActions[b.dataset.key];let code=null;b.addEventListener('pointerdown',e=>{e.preventDefault();code=bindings[action]||b.dataset.key;keys[code]=true;b.setPointerCapture?.(e.pointerId)});const up=e=>{e.preventDefault();if(code)keys[code]=false;code=null};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up)});
-function resize(){const w=game.clientWidth,h=game.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);resize();
+function resize(){const w=Math.max(1,game.clientWidth),h=Math.max(1,game.clientHeight);camera.aspect=w/h;camera.updateProjectionMatrix();if(renderer)renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);resize();
 function loop(){
  requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);const padInput=readController();document.querySelectorAll('[data-bind]').forEach(b=>b.classList.toggle('pressed',!!keys[bindings[b.dataset.bind]]));goalLock=Math.max(0,goalLock-dt);
- if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='DÉPART !';if(player&&enemy){player.v=0;enemy.v=0;player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z}resize();renderer.render(scene,camera)}}
+ if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='DÉPART !';if(player&&enemy){player.v=0;enemy.v=0;player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z}resize();if(renderer){try{renderer.render(scene,camera)}catch(error){window.__showArenaDiagnostic?.('ERREUR DE RENDU APRÈS LE DÉCOMPTE : '+(error?.message||String(error)),true)}}}}
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
@@ -280,10 +290,9 @@ function loop(){
   updateHud();
  }
  const target=player?new THREE.Vector3((player.root.position.x+enemy.root.position.x)*.5,0,(player.root.position.z+enemy.root.position.z)*.5):new THREE.Vector3(0,0,0);
- camera.position.lerp(new THREE.Vector3(target.x,mode==='sumo'?19:mode==='combat'?27:20,target.z+(mode==='combat'?34:mode==='hockey'?27:19)),.045);camera.lookAt(target);renderer.render(scene,camera);
+ camera.position.lerp(new THREE.Vector3(target.x,mode==='sumo'?19:mode==='combat'?27:20,target.z+(mode==='combat'?34:mode==='hockey'?27:19)),.045);camera.lookAt(target);if(renderer){try{renderer.render(scene,camera)}catch(error){ended=true;countdown=0;window.__showArenaDiagnostic?.('ERREUR WEBGL PENDANT LE MATCH : '+(error?.message||String(error)),true)}}
 }
-renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();const status=$('#status');if(status)status.textContent='ERREUR GRAPHIQUE : contexte WebGL perdu'});
-renderer.domElement.addEventListener('webglcontextrestored',()=>{renderer.setClearColor(0x080808,1);resize();renderer.render(scene,camera)});
+if(renderer){renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();window.__showArenaDiagnostic?.('ERREUR GRAPHIQUE : le contexte WebGL a été perdu.',true)});renderer.domElement.addEventListener('webglcontextrestored',()=>{renderer.setClearColor(0x080808,1);resize();renderer.render(scene,camera);window.__hideArenaDiagnostic?.()})}
 window.addEventListener('error',e=>{const status=$('#status');if(status)status.textContent='ERREUR JEU : '+(e.message||'voir console')});
-window.addEventListener('unhandledrejection',e=>{const status=$('#status');if(status)status.textContent='ERREUR CHARGEMENT : '+String(e.reason||'module indisponible')});
+window.addEventListener('unhandledrejection',e=>{const status=$('#status');if(status)status.textContent='ERREUR CHARGEMENT : '+String(e.reason||'module indisponible');window.__showArenaDiagnostic?.('ERREUR DE CHARGEMENT : '+String(e.reason?.message||e.reason||'module indisponible'),true)});
 loop();
