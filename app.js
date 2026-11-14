@@ -2,8 +2,8 @@ import * as THREE from 'three';
 const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen'), renderCanvas=$('#arena-canvas');
 window.__arenaModuleStarted=true;
 window.__showArenaDiagnostic?.('Module chargé : initialisation du moteur 3D…');
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x080808);scene.fog=new THREE.Fog(0x080808,45,95);
-const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(0,18,20);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x080808);scene.fog=null;
+const camera=new THREE.PerspectiveCamera(48,1,.1,200);camera.position.set(0,18,20);
 let renderer=null;
 try {
  renderer=new THREE.WebGLRenderer({canvas:renderCanvas,antialias:true,alpha:false});
@@ -268,11 +268,7 @@ function startMatch(){
  sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
  $('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();
  buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);
- // Sonde visuelle temporaire : vérifie concrètement que la scène 3D est dessinée.
- const renderProbe=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.2,3.2),new THREE.MeshBasicMaterial({color:0xff00ff}));
- renderProbe.position.set(0,2.2,0);scene.add(renderProbe);
- window.__showArenaDiagnostic?.('TEST 3D V.12 — un cube magenta doit apparaître au centre pendant 3 secondes.');
- setTimeout(()=>{scene.remove(renderProbe);renderProbe.geometry.dispose();renderProbe.material.dispose();window.__hideArenaDiagnostic?.()},9000);
+ // V.14 : supprimer la sonde temporaire V.12 qui masquait le diagnostic après 9 s.
  // Attendre que l'écran de match soit réellement affiché avant de dimensionner le canvas.
  const showAndRender=()=>{
   const rect=arenaScreen.getBoundingClientRect(),w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
@@ -291,7 +287,7 @@ const touchActions={KeyW:'forward',KeyS:'backward',KeyA:'left',KeyD:'right',KeyE
 function resize(){const rect=arenaScreen.getBoundingClientRect();const w=Math.max(1,Math.floor(rect.width||game.clientWidth)),h=Math.max(1,Math.floor(rect.height||game.clientHeight));camera.aspect=w/h;camera.updateProjectionMatrix();if(renderer)renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);new ResizeObserver(resize).observe(arenaScreen);resize();
 function loop(){
  requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);const padInput=readController();document.querySelectorAll('[data-bind]').forEach(b=>b.classList.toggle('pressed',!!keys[bindings[b.dataset.bind]]));goalLock=Math.max(0,goalLock-dt);
- if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='DÉPART !';if(player&&enemy){player.v=0;enemy.v=0;player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z}requestAnimationFrame(()=>{try{resize();if(renderer){renderer.render(scene,camera);window.__showArenaDiagnostic?.('V.13 — MATCH ACTIF · canvas '+renderer.domElement.width+' × '+renderer.domElement.height+' · objets 3D : '+scene.children.length+' · rendu : '+renderer.info.render.calls+' appel(s).')} }catch(error){window.__showArenaDiagnostic?.('ERREUR APRÈS LE DÉCOMPTE : '+(error?.message||String(error)),true)}})}}
+ if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='DÉPART !';if(player&&enemy){player.v=0;enemy.v=0;player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z}requestAnimationFrame(()=>{try{resize();if(renderer){renderer.render(scene,camera);(()=>{let meshes=0;world.traverse(o=>{if(o.isMesh)meshes++});const box=new THREE.Box3().setFromObject(world),size=box.getSize(new THREE.Vector3()),r=renderCanvas.getBoundingClientRect();window.__showArenaDiagnostic?.('V.14 — MATCH ACTIF · canvas '+renderer.domElement.width+'×'+renderer.domElement.height+' / CSS '+Math.round(r.width)+'×'+Math.round(r.height)+' · meshes arène : '+meshes+' · enfants world : '+world.children.length+' · volume : '+size.x.toFixed(1)+'×'+size.z.toFixed(1)+' · rendu : '+renderer.info.render.calls+' appels.')} )()} }catch(error){window.__showArenaDiagnostic?.('ERREUR APRÈS LE DÉCOMPTE : '+(error?.message||String(error)),true)}})}}
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
