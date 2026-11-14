@@ -24,3 +24,6 @@
 
 /* Robust stacking: Three.js canvas stays visible behind the transparent in-game HUD. */
 #game>canvas{position:absolute;inset:0;z-index:1;display:block;width:100%;height:100%;outline:0}#arena-screen{z-index:2;background:transparent}#tuning-panel{z-index:5}
+
+/* Stable 3D stack: the renderer lives inside the arena screen, never behind the menu. */
+#arena-screen{z-index:1;background:#080808!important;isolation:isolate;overflow:hidden}#arena-screen>canvas{position:absolute!important;inset:0!important;z-index:0!important;display:block;width:100%;height:100%;pointer-events:none}#hud,#help{z-index:2}#touch-controls,#tuning-panel{z-index:3}#countdown,#end{z-index:4}
