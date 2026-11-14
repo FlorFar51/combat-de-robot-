@@ -27,3 +27,5 @@
 
 /* Stable 3D stack: the renderer lives inside the arena screen, never behind the menu. */
 #arena-screen{z-index:1;background:#080808!important;isolation:isolate;overflow:hidden}#arena-screen>canvas{position:absolute!important;inset:0!important;z-index:0!important;display:block;width:100%;height:100%;pointer-events:none}#hud,#help{z-index:2}#touch-controls,#tuning-panel{z-index:3}#countdown,#end{z-index:4}
+
+#arena-screen{background-color:#080808!important}#arena-screen>canvas{background-color:#080808!important;visibility:visible!important;opacity:1!important}
