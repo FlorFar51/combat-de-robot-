@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0b1119">
+<title>Robot Arena — Combat de robots</title>
+<link rel="stylesheet" href="./style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+</head>
+<body>
+<main id="game">
+  <section id="menu" class="screen">
+    <header class="menu-head"><div class="logo"><span class="logo-mark">R</span><div>ROBOT ARENA<small>ROBOT COMBAT LEAGUE</small></div></div><span class="version">PROTO 02 · 3D</span></header>
+    <div class="menu-content">
+      <div class="intro"><p class="eyebrow">CHOISIS TON TERRAIN</p><h1>ENTRE DANS<br><em>L'ARÈNE.</em></h1><p class="sub">Construis ta stratégie. Pilote ton robot. Remporte le match.</p></div>
+      <div class="mode-grid">
+        <button class="mode-card selected" data-mode="combat"><span class="mode-number">01 / DUEL</span><span class="mode-icon">⚙</span><strong>COMBAT</strong><span class="mode-desc">Détruis ou immobilise ton adversaire.</span><span class="mode-arena">ARÈNE FERMÉE · ARMES AUTORISÉES</span></button>
+        <button class="mode-card" data-mode="sumo"><span class="mode-number">02 / DOHYO</span><span class="mode-icon">◉</span><strong>SUMO</strong><span class="mode-desc">Pousse l'adversaire hors du cercle.</span><span class="mode-arena">PLATEAU CIRCULAIRE · SANS ARMES</span></button>
+        <button class="mode-card" data-mode="hockey"><span class="mode-number">03 / MATCH</span><span class="mode-icon">⌁</span><strong>HOCKEY</strong><span class="mode-desc">Marque des buts avec le palet.</span><span class="mode-arena">PATINOIRE · CAGES ET PALET</span></button>
+      </div>
+      <div class="setup">
+        <div class="setup-title"><span>PARAMÈTRES DU MATCH</span><small>PERSONNALISE TA PARTIE</small></div>
+        <div class="settings-grid">
+          <label>DURÉE DU MATCH<select id="duration"><option value="120">2 minutes</option><option value="180" selected>3 minutes</option><option value="300">5 minutes</option></select></label>
+          <label>DIFFICULTÉ DE L'IA<select id="difficulty"><option value="easy">Facile</option><option value="normal" selected>Normale</option><option value="hard">Difficile</option></select></label>
+          <label>VITESSE DU ROBOT<select id="speed"><option value="0.8">Lente</option><option value="1" selected>Normale</option><option value="1.25">Rapide</option></select></label>
+        </div>
+        <div id="rules" class="rules"><div class="rules-heading">RÈGLES DU COMBAT <span>MODE SÉLECTIONNÉ</span></div><ul id="rules-list"></ul></div>
+        <button id="start" class="start-button">LANCER LE MATCH <span>→</span></button>
+      </div>
+    </div>
+    <footer>UN JEU DE ROBOTS · CONÇU POUR LE WEB <span>CLAVIER : ZQSD / WASD · ESPACE : BOOST</span></footer>
+  </section>
+
+  <section id="arena-screen" class="screen hidden">
+    <div id="hud">
+      <div class="hud-top"><button id="back-menu" class="small-button">← MENU</button><div class="hud-mode" id="hud-mode">COMBAT</div><div class="timer" id="timer">03:00</div></div>
+      <div class="score-row">
+        <div class="score-team blue-team"><b>BLEU</b><strong id="score-blue">100</strong><small id="label-blue">INTÉGRITÉ</small><div class="bar"><i id="bar-blue"></i></div></div>
+        <div class="score-vs">—</div>
+        <div class="score-team red-team"><b>ROUGE</b><strong id="score-red">100</strong><small id="label-red">INTÉGRITÉ</small><div class="bar"><i id="bar-red"></i></div></div>
+      </div>
+      <div id="status">PRÉPARE-TOI</div>
+    </div>
+    <div id="help"><b>COMMANDES</b><span>ZQSD / WASD : piloter</span><span>ESPACE : boost</span><span id="mode-help">Combat : approche et attaque</span></div>
+    <div id="touch-controls">
+      <div class="touch-pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyS">▼</button><button data-key="KeyD">▶</button></div></div>
+      <div class="touch-actions"><button data-key="Space">BOOST</button><button data-key="KeyE" id="action-button">ATTAQUE</button></div>
+    </div>
+    <div id="end" class="hidden"><div class="end-kicker">FIN DU MATCH</div><h2 id="end-title">VICTOIRE</h2><p id="end-detail"></p><button id="rematch">REJOUER</button><button id="end-menu" class="secondary-button">RETOUR AU MENU</button></div>
+  </section>
+  <div id="loading" class="hidden">CHARGEMENT DE L'ARÈNE…</div>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
