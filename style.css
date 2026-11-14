@@ -12,3 +12,5 @@
 
 /* Clean controls after boost removal */
 .touch-actions button{width:64px}
+
+.invert-options{display:grid;gap:8px;margin:12px 0;padding:10px;border:1px solid #333;background:#101010}.invert-options label{display:flex;align-items:center;gap:9px;color:#bbb;font-size:9px;letter-spacing:.6px}.invert-options input{accent-color:#eee;width:14px;height:14px}
