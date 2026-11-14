@@ -80,8 +80,8 @@ function makeRobot(team){
   add(new THREE.BoxGeometry(1.65,.12,.72),M.black,root,0,.23,.02);
   for(const side of [-1,1]){const wheel=add(new THREE.CylinderGeometry(.32,.32,.24,20),M.rubber,root,side*1.03,-.1,0);wheel.rotation.z=Math.PI/2}
   for(const side of [-1,1]){
-   const rail=add(new THREE.BoxGeometry(.16,.16,1.91),accent,root,side*.72,.13,1.405);rail.userData.hockeyFork=true;
-   const tip=add(new THREE.BoxGeometry(.2,.2,.18),M.black,root,side*.72,.13,2.36);tip.userData.hockeyFork=true;
+   const rail=add(new THREE.BoxGeometry(.272,.272,.382),accent,root,side*.72,.13,.70);rail.userData.hockeyFork=true;
+   
   }
  }
  if(mode==='combat')weapon.scale.setScalar(.5);
