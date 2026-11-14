@@ -96,7 +96,7 @@ function resetPositions(){
  for(const b of [player,enemy]){b.v=0;b.slideX=0;b.slideZ=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0;b.contacts=0;b.contactCooldown=0;b.prevX=b.root.position.x;b.prevZ=b.root.position.z}
  if(puck){puck.position.set(0,.12,0);puck.userData.vx=puck.userData.vz=0}
 }
-function buildMatch(){buildArena();player=makeRobot(net.role==='guest'?'red':'blue');enemy=makeRobot(net.role==='guest'?'blue':'red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
+function buildMatch(){buildArena();player=makeRobot(net.role==='guest'?'red':'blue');enemy=makeRobot(net.role==='guest'?'blue':'red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.258,.258,.108,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
 function drive(bot,dt,throttle,steer){
  if(!bot.alive)return;
  if(mode==='combat'||mode==='hockey'){
@@ -211,7 +211,7 @@ function collideBots(a,b,dt){
  a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
 function updatePuck(dt){
- const radius=.43;
+ const radius=.258;
  // Palet en PLA sur terrain plastique : faible frottement, légère résistance à l'air.
  // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
