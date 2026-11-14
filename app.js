@@ -19,7 +19,7 @@ const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};l
 const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0;
-const net={ws:null,role:null,roomId:null,serverUrl:'',remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
+const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
 const M={floor:mat(0x333333),black:mat(0x111111,.65,.35),steel:mat(0x888888,.8,.25),blue:mat(0x59636c,.7,.32),red:mat(0xaaaaaa,.7,.32),rubber:mat(0x090909,.1,.9),line:mat(0xeeeeee)};
@@ -96,7 +96,7 @@ function resetPositions(){
  for(const b of [player,enemy]){b.v=0;b.hp=100;b.alive=true;b.cooldown=0;b.puckTouchCooldown=0;b.contacts=0;b.contactCooldown=0;b.prevX=b.root.position.x;b.prevZ=b.root.position.z}
  if(puck){puck.position.set(0,.12,0);puck.userData.vx=puck.userData.vz=0}
 }
-function buildMatch(){buildArena();player=makeRobot('blue');enemy=makeRobot('red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
+function buildMatch(){buildArena();player=makeRobot(net.role==='guest'?'red':'blue');enemy=makeRobot(net.role==='guest'?'blue':'red');if(mode==='hockey'){puck=add(new THREE.CylinderGeometry(.43,.43,.18,32),M.black,world,0,.12,0);puck.userData={vx:0,vz:0}}resetPositions()}
 function drive(bot,dt,throttle,steer){
  if(!bot.alive)return;
  if(mode==='combat'||mode==='hockey'){
@@ -272,11 +272,11 @@ function updatePuck(dt){
 function scoreGoal(team){if(goalLock>0)return;goalLock=.8;if(team==='blue')scoreBlue++;else scoreRed++;$('#status').textContent=team==='blue'?'BUT BLEU':'BUT ROUGE';resetPositions();if(scoreBlue>=3||scoreRed>=3)finish(scoreBlue>scoreRed?'BLEU':'ROUGE','Premier à trois buts.')}
 function updateSumo(){for(const [b,t] of [[player,'blue'],[enemy,'red']])if(Math.hypot(b.root.position.x,b.root.position.z)>8.4){if(t==='blue')roundRed++;else roundBlue++;resetPositions();if(roundBlue>=2||roundRed>=2)finish(roundBlue>roundRed?'BLEU':'ROUGE','Deux manches gagnantes.')}}
 function updateHud(){
- const a=mode==='combat'?player.contacts:mode==='sumo'?roundBlue:scoreBlue,b=mode==='combat'?enemy.contacts:mode==='sumo'?roundRed:scoreRed;
+ const blueBot=net.role==='guest'?enemy:player,redBot=net.role==='guest'?player:enemy;const a=mode==='combat'?blueBot.contacts:mode==='sumo'?roundBlue:scoreBlue,b=mode==='combat'?redBot.contacts:mode==='sumo'?roundRed:scoreRed;
  $('#score-blue').textContent=Math.ceil(a);$('#score-red').textContent=Math.ceil(b);
  const top=Math.max(1,a,b);$('#bar-blue').style.width=(mode==='combat'?a/top*100:a/3*100)+'%';$('#bar-red').style.width=(mode==='combat'?b/top*100:b/3*100)+'%';
  $('#label-blue').textContent=$('#label-red').textContent=mode==='combat'?'CONTACTS':mode==='sumo'?'MANCHES':'BUTS';
- $('#contact-count').textContent='CONTACTS · BLEU '+(player.contacts||0)+' / ROUGE '+(enemy.contacts||0);
+ $('#contact-count').textContent='CONTACTS · BLEU '+(blueBot.contacts||0)+' / ROUGE '+(redBot.contacts||0);
 }
 function finish(winner,detail){if(ended)return;ended=true;if(net.role==='host')wsSend('end',{winner,detail});$('#end-title').textContent=winner==='NUL'?'ÉGALITÉ':winner==='BLEU'?'VICTOIRE':'DÉFAITE';$('#end-detail').textContent=detail;$('#end').classList.remove('hidden')}
 function attackPuck(bot){if(!puck||bot.cooldown>0)return;const d=Math.hypot(puck.position.x-bot.root.position.x,puck.position.z-bot.root.position.z);if(d<3){puck.userData.vx+=Math.sin(bot.root.rotation.y)*16;puck.userData.vz+=Math.cos(bot.root.rotation.y)*16;bot.cooldown=.3}}
@@ -317,9 +317,9 @@ function connectNetwork(serverUrl){
    }else if(msg.type==='joined'){
     net.role='guest';net.roomId=msg.roomId;$('#online-state').textContent='Connecté au lobby · en attente de l’hôte';netStatus('Connecté au lobby '+msg.roomId);
    }else if(msg.type==='opponent_joined'){
-    $('#online-state').textContent='2 joueurs connectés · prêt à jouer';netStatus('Ton ami a rejoint le lobby');
+    net.opponent=true;$('#online-state').textContent='2 joueurs connectés · prêt à jouer';netStatus('Ton ami a rejoint le lobby');
    }else if(msg.type==='opponent_left'){
-    $('#online-state').textContent='Ton ami s’est déconnecté';netStatus('Deuxième joueur déconnecté');
+    net.opponent=false;$('#online-state').textContent='Ton ami s’est déconnecté';netStatus('Deuxième joueur déconnecté');
    }else if(msg.type==='remote_input'){
     net.remote={throttle:msg.throttle||0,steering:msg.steering||0,action:!!msg.action};
    }else if(msg.type==='start'){
@@ -337,7 +337,7 @@ function connectNetwork(serverUrl){
 function applyNetworkState(s){
  if(!s||!player||!enemy)return;
  const apply=(bot,v)=>{if(!v)return;bot.root.position.set(Number(v.x)||0,Number(v.y)||.12,Number(v.z)||0);bot.root.rotation.y=Number(v.r)||0;bot.v=Number(v.v)||0;bot.hp=Number(v.hp)||0;bot.contacts=Number(v.contacts)||0};
- apply(player,s.blue);apply(enemy,s.red);
+ if(net.role==='guest'){apply(player,s.red);apply(enemy,s.blue)}else{apply(player,s.blue);apply(enemy,s.red)}
  if(puck&&s.puck){puck.position.set(Number(s.puck.x)||0,.12,Number(s.puck.z)||0);puck.userData.vx=Number(s.puck.vx)||0;puck.userData.vz=Number(s.puck.vz)||0}
  if(Number.isFinite(s.remaining)){remaining=s.remaining;$('#timer').textContent=fmt(remaining)}
  if(Number.isFinite(s.scoreBlue))scoreBlue=s.scoreBlue;if(Number.isFinite(s.scoreRed))scoreRed=s.scoreRed;
@@ -356,7 +356,7 @@ $('#create-lobby').addEventListener('click',createOnlineLobby);
 $('#join-lobby').addEventListener('click',joinOnlineLobby);
 $('#copy-invite').addEventListener('click',()=>{const value=$('#room-link').value;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Lien copié')).catch(()=>{$('#room-link').select();netStatus('Copie le lien sélectionné')});else{$('#room-link').select();netStatus('Copie le lien sélectionné')}});
 $('#copy-password').addEventListener('click',()=>{const value=$('#room-password').textContent;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Mot de passe copié'))});
-$('#start-online').addEventListener('click',()=>{if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');wsSend('start',{mode,difficulty:$('#difficulty').value});startMatch()});
+$('#start-online').addEventListener('click',()=>{if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');wsSend('start',{mode,difficulty:$('#difficulty').value});startMatch()});
 $('#leave-online').addEventListener('click',()=>{wsSend('leave');if(net.ws)net.ws.close();net.role=null;net.roomId=null;$('#online-state').textContent='Hors du lobby';netStatus('Lobby quitté')});
 try{const params=new URLSearchParams(location.search);$('#server-url').value=params.get('server')||localStorage.getItem('robotArenaServerUrl')||'';if(params.get('room')){$('#join-room').value=params.get('room');$('#online-state').textContent='Invitation reçue · saisis le mot de passe'}}catch{}
 
@@ -411,7 +411,7 @@ function loop(){
  requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);const padInput=readController();document.querySelectorAll('[data-bind]').forEach(b=>b.classList.toggle('pressed',!!keys[bindings[b.dataset.bind]]));goalLock=Math.max(0,goalLock-dt);
  if(countdown>0){countdown-=dt;const n=Math.max(1,Math.ceil(countdown));$('#countdown-number').textContent=String(n);if(countdown<=0){countdown=0;ended=false;$('#countdown').classList.add('hidden');$('#status').textContent='DÉPART !';if(player&&enemy){player.v=0;enemy.v=0;player.prevX=player.root.position.x;player.prevZ=player.root.position.z;enemy.prevX=enemy.root.position.x;enemy.prevZ=enemy.root.position.z}requestAnimationFrame(()=>{try{resize();if(renderer)renderer.render(scene,camera)}catch(error){window.__showArenaDiagnostic?.('ERREUR APRÈS LE DÉCOMPTE : '+(error?.message||String(error)),true)}})}}
  if(!ended&&player&&enemy){
-  remaining-=dt;if(remaining<=0){remaining=0;const winner=mode==='combat'?(player.contacts===enemy.contacts?'NUL':player.contacts>enemy.contacts?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE');const detail=mode==='combat'?'Temps écoulé · BLEU '+player.contacts+' contacts / ROUGE '+enemy.contacts+' contacts.':'Temps écoulé.';finish(winner,detail)}
+  if(net.role!=='guest')remaining-=dt;if(net.role!=='guest'&&remaining<=0){remaining=0;const winner=mode==='combat'?(player.contacts===enemy.contacts?'NUL':player.contacts>enemy.contacts?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE');const detail=mode==='combat'?'Temps écoulé · BLEU '+player.contacts+' contacts / ROUGE '+enemy.contacts+' contacts.':'Temps écoulé.';finish(winner,detail)}
   $('#timer').textContent=fmt(remaining);
   if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s';
   const keyboardThrottle=Number(actionDown('forward'));
@@ -427,7 +427,7 @@ function loop(){
   const reportBad=stage=>{if(badBot(player)||badBot(enemy)){ended=true;window.__showArenaDiagnostic?.('V.23 — NaN détecté '+stage+' · BLEU pos '+[player.root.position.x,player.root.position.y,player.root.position.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' rot '+[player.root.rotation.x,player.root.rotation.y,player.root.rotation.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' · ROUGE pos '+[enemy.root.position.x,enemy.root.position.y,enemy.root.position.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' rot '+[enemy.root.rotation.x,enemy.root.rotation.y,enemy.root.rotation.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' · vitesses '+player.v.toFixed(2)+' / '+enemy.v.toFixed(2),true);return true}return false};
   if(net.role!=='guest'){
    drive(player,dt,f,steering);if(reportBad('après conduite joueur'))return;
-   if(net.role==='host'&&net.ws?.readyState===WebSocket.OPEN&&net.roomId){drive(enemy,dt,net.remote.throttle,net.remote.steering);if(mode==='hockey'&&net.remote.action)attackPuck(enemy)}else updateAI(dt);
+   if(net.role==='host'&&net.opponent&&net.ws?.readyState===WebSocket.OPEN&&net.roomId){drive(enemy,dt,net.remote.throttle,net.remote.steering);if(mode==='hockey'&&net.remote.action)attackPuck(enemy)}else updateAI(dt);
    if(reportBad('après IA'))return;
   }
   confineRobot(player);confineRobot(enemy);if(reportBad('après limites'))return;
