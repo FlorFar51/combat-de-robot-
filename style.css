@@ -14,3 +14,6 @@
 .touch-actions button{width:64px}
 
 .invert-options{display:grid;gap:8px;margin:12px 0;padding:10px;border:1px solid #333;background:#101010}.invert-options label{display:flex;align-items:center;gap:9px;color:#bbb;font-size:9px;letter-spacing:.6px}.invert-options input{accent-color:#eee;width:14px;height:14px}
+
+#contact-count{position:absolute;z-index:2;top:118px;left:50%;transform:translateX(-50%);padding:5px 9px;background:rgba(0,0,0,.72);border:1px solid #444;color:#bbb;font-size:9px;letter-spacing:1px;white-space:nowrap;pointer-events:none}
+@media(max-width:700px){#contact-count{top:112px;font-size:8px}}
