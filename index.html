@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#10151d">
+  <title>Combat de robots — Prototype 3D</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}
+  </script>
+</head>
+<body>
+  <main id="game">
+    <div id="hud">
+      <div class="brand"><span class="dot"></span> ROBOT ARENA <small>PROTOYPE 01</small></div>
+      <div class="fighters">
+        <section class="fighter blue"><b>JOU ON 1</b><div class="health"><i id="health-player"></i></div><span id="hp-player">100%</span></section>
+        <div class="versus">VS</div>
+        <section class="fighter red"><b>ADVERSAIRE</b><div class="health"><i id="health-enemy"></i></div><span id="hp-enemy">100%</span></section>
+      </div>
+      <div id="message">Prépare-toi au combat</div>
+    </div>
+    <div id="help"><b>COMMANDES</b><span>WASD / ZQSD : conduire</span><span>ESPACE : accélérer</span><span>Le robot adverse est piloté par l'IA</span></div>
+    <div id="crosshair">+</div>
+    <div id="end" class="hidden"><h1 id="end-title">VICTOIRE</h1><button id="restart">REJOUER</button></div>
+    <div id="loading">INITIALISATION DE L'ARÈNE…</div>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
