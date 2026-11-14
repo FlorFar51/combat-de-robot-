@@ -113,6 +113,8 @@ wss.on('connection', ws => {
       broadcast(room, ws, 'start', {
         mode: ['combat', 'sumo', 'hockey'].includes(msg.mode) ? msg.mode : 'combat',
         difficulty: ['easy', 'normal', 'hard'].includes(msg.difficulty) ? msg.difficulty : 'normal',
+        puckGlide: Math.max(0, Math.min(100, Number(msg.puckGlide) || 65)),
+        startAt: Math.max(Date.now() + 500, Math.min(Date.now() + 10000, Number(msg.startAt) || Date.now() + 3000)),
         duration: 120
       });
       return;
