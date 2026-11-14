@@ -68,3 +68,12 @@
 /* V.14 — arène 3D : diagnostic de géométrie et canvas, sans sonde temporisée. */
 #arena-screen{background:#080808!important}
 #arena-screen>#arena-canvas{display:block!important;visibility:visible!important;opacity:1!important}
+
+
+/* V.28 — private two-player lobby */
+.multiplayer-panel{max-width:920px;margin:12px auto 0;padding:14px;background:#080d12;border:1px solid #3a4652;border-radius:3px;display:grid;gap:11px}
+.online-heading{display:flex;align-items:center;justify-content:space-between;gap:10px}.online-heading b,.join-area>b{font-size:11px;letter-spacing:1.3px}.online-heading small{display:block;color:#888;font-size:9px;margin-top:4px}.online-heading>span,.online-state{font-size:10px;color:#b9c7d4}
+.online-field{display:grid;gap:5px;font-size:8px;letter-spacing:1px;color:#999}.online-field input{width:100%;min-width:0;padding:9px;background:#111820;color:#eee;border:1px solid #46515d;border-radius:2px;font:11px Arial,sans-serif;letter-spacing:0}
+.online-actions{display:flex;gap:8px}.online-button{padding:10px 12px;background:#e8edf2;color:#101820;border:0;border-radius:2px;font-size:9px;font-weight:900;letter-spacing:1px}.online-button:disabled{opacity:.45}.secondary-online{background:#17212b;color:#e5edf5;border:1px solid #4a5865}
+.invite-area,.join-area{display:grid;gap:9px;padding-top:10px;border-top:1px solid #303b46}.invite-value{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px;background:#111820;border:1px solid #303b46}.invite-value label{font-size:8px;color:#8998a6;letter-spacing:1px;flex:1 1 100%}.invite-value strong{font-size:18px;letter-spacing:2px;color:#fff}.copy-small{margin-left:auto;padding:6px 9px;background:#263440;color:#fff;border:1px solid #536373;font-size:8px}.join-area>b{color:#c6d1dc}.multiplayer-panel .hidden{display:none!important}
+@media(max-width:700px){.multiplayer-panel{margin-top:10px;padding:10px;gap:9px}.online-heading b,.join-area>b{font-size:10px}.online-button{font-size:8px;padding:10px 8px}.online-field input{font-size:10px}}
