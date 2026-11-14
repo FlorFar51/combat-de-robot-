@@ -263,7 +263,7 @@ function updatePuck(dt){
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
   if(puckGlide<=0){puck.userData.vx=0;puck.userData.vz=0}
   else if(speed>0){
-   const deceleration=(.12+speed*.008)*(1-.2*puckGlide/100);
+   const deceleration=(.12+speed*.008)*(1-.01*puckGlide/100);
    const nextSpeed=Math.max(0,speed-deceleration*step);
    const factor=nextSpeed/speed;
    puck.userData.vx*=factor;puck.userData.vz*=factor;
