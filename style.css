@@ -45,3 +45,7 @@
 #arena-screen>#hud,#arena-screen>#help{z-index:3!important}
 #arena-screen>#touch-controls,#arena-screen>#tuning-panel{z-index:4!important}
 #arena-screen>#countdown,#arena-screen>#end{z-index:5!important}
+
+
+/* Visible build number on menu and during matches. */
+#build-version{position:absolute;z-index:9999;right:10px;bottom:8px;padding:4px 7px;background:rgba(0,0,0,.72);border:1px solid #444;color:#aaa;font:700 9px/1 Arial,sans-serif;letter-spacing:1px;pointer-events:none}
