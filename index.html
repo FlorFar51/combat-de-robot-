@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="stylesheet" href="./style.css">
+<link rel="stylesheet" href="./style.css?v=20261114-4">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
@@ -74,8 +74,8 @@
         <div class="score-team red-team"><b>ROUGE</b><strong id="score-red">100</strong><small id="label-red">INTÉGRITÉ</small><div class="bar"><i id="bar-red"></i></div></div>
       </div>
       <div id="status">PRÉPARE-TOI</div><div id="contact-count">CONTACTS · BLEU 0 / ROUGE 0</div>
-      <div id="tuning-panel"><label for="tune-speed">VITESSE TOUT DROIT <output id="tune-speed-value">2.7 m/s</output></label><input id="tune-speed" type="range" min="0.5" max="12" step="0.1" value="2.7"><label for="tune-rotation">VITESSE DE ROTATION <output id="tune-rotation-value">2.0 rad/s</output></label><input id="tune-rotation" type="range" min="0.5" max="14" step="0.1" value="2"></div>
     </div>
+    <div id="tuning-panel"><label for="tune-speed">VITESSE TOUT DROIT <output id="tune-speed-value">2.7 m/s</output></label><input id="tune-speed" type="range" min="0.5" max="12" step="0.1" value="2.7"><label for="tune-rotation">VITESSE DE ROTATION <output id="tune-rotation-value">2.0 rad/s</output></label><input id="tune-rotation" type="range" min="0.5" max="14" step="0.1" value="2"></div>
     <div id="help"><b>COMMANDES</b><span>ZQSD / WASD : avancer et tourner</span><span id="mode-help">Combat : approche et attaque</span></div>
     <div id="touch-controls">
       <div class="touch-pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyD">▶</button></div></div>
@@ -86,6 +86,6 @@
   </section>
   <div id="loading" class="hidden">CHARGEMENT DE L'ARÈNE…</div>
 </main>
-<script type="module" src="./app.js"></script>
+<script type="module" src="./app.js?v=20261114-4"></script>
 </body>
 </html>
