@@ -219,7 +219,7 @@ function setMode(m){
  mode=m;
  tunedSpeed=m==='sumo'?7.8:2.7;tunedRotation=m==='sumo'?11:2.0;
  const speedControl=$('#tune-speed'),rotationControl=$('#tune-rotation');
- if(speedControl&&rotationControl){speedControl.value=tunedSpeed;rotationControl.value=tunedRotation;$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
+ if(speedControl&&rotationControl){speedControl.value=tunedSpeed;rotationControl.value=tunedRotation;if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
  document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('selected',c.dataset.mode===m));
  const data={
  combat:{title:'RÈGLES · COMBAT',items:['Duel dans une arène fermée.','L’arme rotative inflige des dégâts sur les impacts.','Un robot neutralisé ou à 0 % est éliminé.','À la fin du temps, le plus d’intégrité gagne.'],help:'Combat : E pour une attaque supplémentaire.',labels:['INTÉGRITÉ','INTÉGRITÉ']},
@@ -235,8 +235,9 @@ function openControls(){$('.menu-content').classList.add('hidden');$('#controls-
 function closeControls(){$('#controls-panel').classList.add('hidden');$('.menu-content').classList.remove('hidden')}
 $('#controls-tab').addEventListener('click',openControls);$('#controls-back').addEventListener('click',closeControls);
 document.querySelectorAll('[data-bind]').forEach(b=>b.addEventListener('click',()=>{if(waitingForBind)waitingForBind.classList.remove('waiting');waitingForBind=b;b.classList.add('waiting');b.textContent='APPUIE…'}));
-$('#tune-speed').addEventListener('input',e=>{tunedSpeed=Number(e.target.value);$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s'});
-$('#tune-rotation').addEventListener('input',e=>{tunedRotation=Number(e.target.value);$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'});
+const tuneSpeedInput=$('#tune-speed'),tuneRotationInput=$('#tune-rotation');
+if(tuneSpeedInput)tuneSpeedInput.addEventListener('input',e=>{tunedSpeed=Number(e.target.value);$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s'});
+if(tuneRotationInput)tuneRotationInput.addEventListener('input',e=>{tunedRotation=Number(e.target.value);$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'});
 $('#invert-throttle').addEventListener('change',e=>{invertThrottle=e.target.checked});$('#invert-steering').addEventListener('change',e=>{invertSteering=e.target.checked});
 $('#reset-bindings').addEventListener('click',()=>{bindings={...DEFAULT_BINDINGS};try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}waitingForBind=null;renderBindings()});
 try{const saved=JSON.parse(localStorage.getItem('robotArenaBindings')||'null');if(saved)for(const k of Object.keys(DEFAULT_BINDINGS))if(typeof saved[k]==='string')bindings[k]=saved[k]}catch{}renderBindings();
@@ -264,7 +265,7 @@ function loop(){
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
-  $('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s';
+  if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s';
   const keyboardThrottle=Number(actionDown('forward'));
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
