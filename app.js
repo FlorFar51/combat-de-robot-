@@ -116,9 +116,15 @@ function collideBots(a,b,dt){
  const ah=robotHitboxes(a),bh=robotHitboxes(b);let contacts=[],weaponA=false,weaponB=false;
  for(const x of ah)for(const y of bh)if(x.box.intersectsBox(y.box)){contacts.push([x,y]);if(x.mesh.parent===a.weapon)weaponA=true;if(y.mesh.parent===b.weapon)weaponB=true}
  const dx=b.root.position.x-a.root.position.x,dz=b.root.position.z-a.root.position.z,d=Math.hypot(dx,dz);
- if(contacts.length&&d>.001){
+ if(d>.001&&(contacts.length||(mode==='hockey'&&d<2.35))){
   const nx=dx/d,nz=dz/d;
-  a.root.position.x-=nx*.035;b.root.position.x+=nx*.035;a.root.position.z-=nz*.035;b.root.position.z+=nz*.035;
+  const overlap=mode==='hockey'?Math.max(0,2.35-d):.07;
+  a.root.position.x-=nx*(overlap*.52);b.root.position.x+=nx*(overlap*.52);
+  a.root.position.z-=nz*(overlap*.52);b.root.position.z+=nz*(overlap*.52);
+  if(mode==='hockey'){
+   const av=a.v,bv=b.v;
+   a.v=Math.max(0,av*.55+bv*.2);b.v=Math.max(0,bv*.55+av*.2);
+  }
   const fa=Math.sin(a.root.rotation.y)*dx+Math.cos(a.root.rotation.y)*dz,fb=-Math.sin(b.root.rotation.y)*dx-Math.cos(b.root.rotation.y)*dz;
   if(mode==='combat'){
    if(weaponA&&a.cooldown<=0&&(a!==player||sawEnabled)){b.hp=Math.max(0,b.hp-rand(8,14));a.cooldown=.35}
