@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-34">
-<link rel="stylesheet" href="./style.css?v=20261114-34">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-35">
+<link rel="stylesheet" href="./style.css?v=20261114-35">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
   <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
-  <div id="build-version" aria-label="Version du jeu">V.34</div>
+  <div id="build-version" aria-label="Version du jeu">V.35</div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
@@ -53,7 +53,8 @@
           <label id="puck-bounce-setting" style="display:none">REBOND DU PALET <span><output id="puck-bounce-value">65 %</output></span><input id="puck-bounce" type="range" min="0" max="100" step="1" value="65"></label>
         </div>
         <div id="rules" class="rules"><div class="rules-heading"><b id="rules-title">RÈGLES DU COMBAT</b><span>MODE SÉLECTIONNÉ</span></div><ul id="rules-list"></ul></div>
-        <button id="start" class="start-button">LANCER LE MATCH <span>→</span></button>
+        <button id="test-mode" class="test-mode-button">MODE TEST : DÉSACTIVÉ</button>
+         <button id="start" class="start-button">LANCER LE MATCH <span>→</span></button>
       </div>
     </div>
 
@@ -108,7 +109,8 @@
       <div class="touch-pad"><button data-key="KeyW">▲</button><div><button data-key="KeyA">◀</button><button data-key="KeyD">▶</button></div></div>
       <div class="touch-actions"><button data-key="KeyE" id="action-button">SCIE</button></div>
     </div>
-    <div id="countdown" class="hidden"><div class="countdown-label">PRÉPAREZ-VOUS</div><strong id="countdown-number">3</strong><div class="countdown-sub">LE MATCH COMMENCE</div></div>
+    <div id="round-banner" class="hidden"></div>
+     <div id="countdown" class="hidden"><div class="countdown-label">PRÉPAREZ-VOUS</div><strong id="countdown-number">3</strong><div class="countdown-sub">LE MATCH COMMENCE</div></div>
     <div id="end" class="hidden"><div class="end-kicker">FIN DU MATCH</div><h2 id="end-title">VICTOIRE</h2><p id="end-detail"></p><button id="rematch">REJOUER</button><button id="end-menu" class="secondary-button">RETOUR AU MENU</button></div>
   </section>
   <div id="loading" class="hidden">CHARGEMENT DE L'ARÈNE…</div>
@@ -137,6 +139,6 @@
   }, 7000);
 })();
 </script>
-<script type="module" src="./app.js?v=20261114-34" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
+<script type="module" src="./app.js?v=20261114-35" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
 </body>
 </html>
