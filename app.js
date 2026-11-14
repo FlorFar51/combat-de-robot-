@@ -45,9 +45,9 @@ function buildArena(){
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
  for(const x of [-halfWidth,halfWidth]){
   for(const z of [-5.65,5.65])add(new THREE.BoxGeometry(.3,.65,6.7),M.black,world,x,.12,z);
-  for(const z of [-3.45,3.45])add(new THREE.BoxGeometry(.12,1.25,.12),M.steel,world,x,.57,z);
-  add(new THREE.BoxGeometry(.12,.12,6.9),M.steel,world,x,1.2,0);
-  const net=add(new THREE.BoxGeometry(.9,.9,6.75),mat(0x222222),world,x+(x>0?.5:-.5),.52,0);net.material.transparent=true;net.material.opacity=.5;
+  for(const z of [-1.22,1.22])add(new THREE.BoxGeometry(.12,1.25,.12),M.steel,world,x,.57,z);
+  add(new THREE.BoxGeometry(.12,.12,2.44),M.steel,world,x,1.2,0);
+  const net=add(new THREE.BoxGeometry(.9,.9,2.4),mat(0x222222),world,x+(x>0?.5:-.5),.52,0);net.material.transparent=true;net.material.opacity=.5;
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -171,17 +171,17 @@ function collideBots(a,b,dt){
  const rx=(b.prevX??b.root.position.x)-(a.prevX??a.root.position.x),rz=(b.prevZ??b.root.position.z)-(a.prevZ??a.root.position.z);
  const travel2=sx*sx+sz*sz,t=travel2>.0001?clamp(-(rx*sx+rz*sz)/travel2,0,1):0;
  const closest=Math.hypot(rx+sx*t,rz+sz*t),minDistance=mode==='hockey'?2.65:mode==='combat'?2.35:2.1;
- const touching=mode==='hockey'?(Math.abs(dx)<2.65&&Math.abs(dz)<2.65):(d<minDistance||closest<minDistance);
+ const hockeyHalf=1.22;const touching=mode==='hockey'?(Math.abs(dx)<hockeyHalf*2&&Math.abs(dz)<hockeyHalf*2):(d<minDistance||closest<minDistance);
  if(touching){
   let nx,nz;
-  if(mode==='hockey'){if(2.65-Math.abs(dx)<2.65-Math.abs(dz)){nx=Math.sign(dx)||1;nz=0}else{nx=0;nz=Math.sign(dz)||1}}
+  if(mode==='hockey'){if(hockeyHalf*2-Math.abs(dx)<hockeyHalf*2-Math.abs(dz)){nx=Math.sign(dx)||1;nz=0}else{nx=0;nz=Math.sign(dz)||1}}
   else{nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0}
   const avx=Math.sin(a.root.rotation.y)*a.v,avz=Math.cos(a.root.rotation.y)*a.v,bvx=Math.sin(b.root.rotation.y)*b.v,bvz=Math.cos(b.root.rotation.y)*b.v;
   const closing=(bvx-avx)*nx+(bvz-avz)*nz;
   if(mode==='hockey'){
-   const overlap=Math.min(2.65-Math.abs(dx),2.65-Math.abs(dz)),separation=Math.max(0,overlap)*.5+.012;
+   const overlap=Math.min(hockeyHalf*2-Math.abs(dx),hockeyHalf*2-Math.abs(dz)),separation=Math.max(0,overlap)*.5+.012;
    a.root.position.x-=nx*separation;b.root.position.x+=nx*separation;a.root.position.z-=nz*separation;b.root.position.z+=nz*separation;
-   if(closing<0){const push=clamp(-closing*.025,0,.18);a.root.position.x-=nx*push*.25;b.root.position.x+=nx*push*.75;a.root.position.z-=nz*push*.25;b.root.position.z+=nz*push*.75;a.v=Math.max(0,a.v*.99);b.v=Math.max(0,b.v*.99)}
+   if(closing<-.6){const impactSpeed=-closing,push=clamp((impactSpeed-.6)*.045,0,.42);a.root.position.x-=nx*push*.5;b.root.position.x+=nx*push*.5;a.root.position.z-=nz*push*.5;b.root.position.z+=nz*push*.5;const loss=clamp(impactSpeed*.012,0,.16);a.v=Math.max(0,a.v*(1-loss));b.v=Math.max(0,b.v*(1-loss))}
   }else if(d<minDistance){const overlap=minDistance-d+.025;a.root.position.x-=nx*overlap*.5;b.root.position.x+=nx*overlap*.5;a.root.position.z-=nz*overlap*.5;b.root.position.z+=nz*overlap*.5}
   else if(closest<minDistance){const midX=(a.root.position.x+b.root.position.x)*.5,midZ=(a.root.position.z+b.root.position.z)*.5;a.root.position.x=midX-nx*(minDistance*.51);b.root.position.x=midX+nx*(minDistance*.51);a.root.position.z=midZ-nz*(minDistance*.51);b.root.position.z=midZ+nz*(minDistance*.51)}
   if(closing<0){const impact=Math.min(1,Math.abs(closing)/8);if(mode!=='sumo'){a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact))}}
@@ -197,7 +197,7 @@ function updatePuck(dt){
  // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
   const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
-  if(puck.position.y-.344>.42||puck.position.y+.344<-.12)return;
+  const robotBottom=-.42,robotTop=.27;if(puck.position.y-.344>robotTop||puck.position.y+.344<robotBottom)return;
   const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
   let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
   let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
@@ -253,7 +253,7 @@ function updatePuck(dt){
   }
   // Le palet (rayon 0,43) doit être entièrement derrière la ligne de but x = +/-16.
   // L'ouverture utile est réduite de son rayon pour éviter qu'un palet touche un poteau.
-  const insideGoal=Math.abs(puck.position.z)<2.805;
+  const insideGoal=Math.abs(puck.position.z)<1.22;
   if(insideGoal&&puck.position.x>14.744){scoreGoal('blue');return}
   if(insideGoal&&puck.position.x< -14.744){scoreGoal('red');return}
   // Hors de l'ouverture, les bandes latérales bloquent le palet.
