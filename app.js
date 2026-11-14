@@ -206,13 +206,22 @@ function collideBots(a,b,dt){
 }
 function updatePuck(dt){
  const radius=.43;
- // Collision cercle (palet) / rectangle orienté (châssis et fourches) dans le repère local de chaque robot.
+ // Palet en PLA sur terrain plastique : faible frottement, légère résistance à l'air.
+ // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
   const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
   const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
   let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
   let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
+  // Vitesse du robot dans son propre repère : il pousse réellement le palet en avançant.
+  const botVx=cs*(Math.sin(b.root.rotation.y)*b.v)-sn*(Math.cos(b.root.rotation.y)*b.v);
+  const botVz=sn*(Math.sin(b.root.rotation.y)*b.v)+cs*(Math.cos(b.root.rotation.y)*b.v);
   let collided=false;
+  const bounce=(nx,nz)=>{
+   const relativeNormal=(vx-botVx)*nx+(vz-botVz)*nz;
+   // Contact plastique/plastique : rebond modéré, transfert d'énergie depuis le robot.
+   if(relativeNormal<0){const impulse=1.12*relativeNormal;vx-=impulse*nx;vz-=impulse*nz}
+  };
   const rect=(cx,cz,hx,hz)=>{
    const qx=clamp(x,cx-hx,cx+hx),qz=clamp(z,cz-hz,cz+hz);
    let ox=x-qx,oz=z-qz,d2=ox*ox+oz*oz;
@@ -221,16 +230,13 @@ function updatePuck(dt){
    if(d2>.000001){const d=Math.sqrt(d2);nx=ox/d;nz=oz/d;depth=radius-d}
    else{const px=hx-Math.abs(x-cx),pz=hz-Math.abs(z-cz);if(px<pz){nx=x<cx?-1:1;nz=0;depth=radius+px}else{nx=0;nz=z<cz?-1:1;depth=radius+pz}}
    x+=nx*(depth+.003);z+=nz*(depth+.003);
-   const vn=vx*nx+vz*nz;if(vn<0){vx-=1.35*vn*nx;vz-=1.35*vn*nz}
-   collided=true;
+   bounce(nx,nz);collided=true;
   };
-  // Coque, puis les deux fourches physiques : aucune zone de passage fictive.
+  // Coque et deux longerons : le palet peut entrer entre les fourches.
   rect(0,0,1.025,.45);
   for(const side of [-1,1]){
-   // Roue vue de dessus.
    const wx=x-side*1.03,wz=z,d=Math.hypot(wx,wz),sum=radius+.32;
-   if(d<sum){const nx=d>.0001?wx/d:side,nz=d>.0001?wz/d:0,depth=sum-d;x+=nx*(depth+.003);z+=nz*(depth+.003);const vn=vx*nx+vz*nz;if(vn<0){vx-=1.35*vn*nx;vz-=1.35*vn*nz}collided=true}
-   // Longerons raccourcis, épaissis (dimensions réelles du modèle).
+   if(d<sum){const nx=d>.0001?wx/d:side,nz=d>.0001?wz/d:0,depth=sum-d;x+=nx*(depth+.003);z+=nz*(depth+.003);bounce(nx,nz);collided=true}
    rect(side*.72,1.214,.136,.764);
   }
   if(collided){
@@ -241,19 +247,26 @@ function updatePuck(dt){
    b.puckTouchCooldown=.08;
   }
  };
- // Sous-pas de 0,08 unité maximum : évite le tunneling du palet à grande vitesse.
+ // Sous-pas courts pour éviter que le palet traverse les robots à grande vitesse.
  const travel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
- const steps=Math.max(1,Math.ceil(travel/.08)),step=dt/steps;
+ const steps=Math.max(1,Math.ceil(travel/.06)),step=dt/steps;
  for(let i=0;i<steps;i++){
   puck.position.x+=puck.userData.vx*step;puck.position.z+=puck.userData.vz*step;
   for(const b of [player,enemy])hitRobot(b);
-  const friction=Math.pow(.986,step*60);puck.userData.vx*=friction;puck.userData.vz*=friction;
+  // Frottement faible et progressif : le palet conserve son élan puis ralentit sans s'arrêter brutalement.
+  const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
+  if(speed>0){
+   const deceleration=1.15+speed*.035;
+   const nextSpeed=Math.max(0,speed-deceleration*step);
+   const factor=nextSpeed/speed;
+   puck.userData.vx*=factor;puck.userData.vz*=factor;
+  }
   if(puck.position.x>16.15&&Math.abs(puck.position.z)<2.05){scoreGoal('blue');return}
   if(puck.position.x<-16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('red');return}
-  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.8}
-  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.75}
+  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.72}
+  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.72}
  }
- const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=17/speed;puck.userData.vz*=17/speed}
+ const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
 }
 function scoreGoal(team){if(goalLock>0)return;goalLock=.8;if(team==='blue')scoreBlue++;else scoreRed++;$('#status').textContent=team==='blue'?'BUT BLEU':'BUT ROUGE';resetPositions();if(scoreBlue>=3||scoreRed>=3)finish(scoreBlue>scoreRed?'BLEU':'ROUGE','Premier à trois buts.')}
 function updateSumo(){for(const [b,t] of [[player,'blue'],[enemy,'red']])if(Math.hypot(b.root.position.x,b.root.position.z)>8.4){if(t==='blue')roundRed++;else roundBlue++;resetPositions();if(roundBlue>=2||roundRed>=2)finish(roundBlue>roundRed?'BLEU':'ROUGE','Deux manches gagnantes.')}}
