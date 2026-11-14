@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-27">
-<link rel="stylesheet" href="./style.css?v=20261114-27">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-28">
+<link rel="stylesheet" href="./style.css?v=20261114-28">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
   <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
-  <div id="build-version" aria-label="Version du jeu">V.27</div>
+  <div id="build-version" aria-label="Version du jeu">V.28</div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
@@ -22,6 +22,26 @@
         <button class="mode-card" data-mode="sumo"><strong>SUMO</strong><span class="mode-desc">Pousse l'adversaire hors du cercle.</span></button>
         <button class="mode-card" data-mode="hockey"><strong>HOCKEY</strong><span class="mode-desc">Marque des buts avec le palet.</span></button>
       </div>
+      <section id="multiplayer-panel" class="multiplayer-panel">
+        <div class="online-heading"><div><b>MULTIJOUEUR PRIVÉ</b><small>Deux joueurs · sans compte</small></div><span id="network-status">Hors ligne</span></div>
+        <label class="online-field">ADRESSE DU SERVEUR CLOUDFLARE<input id="server-url" type="url" placeholder="https://xxxx.trycloudflare.com" autocomplete="url"></label>
+        <div class="online-actions"><button id="create-lobby" class="online-button">CRÉER UN LOBBY</button></div>
+        <div id="invite-area" class="invite-area hidden">
+          <div class="online-state" id="online-state">Lobby créé · en attente du deuxième joueur</div>
+          <div class="invite-value"><label>IDENTIFIANT</label><strong id="room-code"></strong></div>
+          <div class="invite-value"><label>MOT DE PASSE À COMMUNIQUER SÉPARÉMENT</label><strong id="room-password"></strong><button id="copy-password" class="copy-small">COPIER</button></div>
+          <label class="online-field">LIEN D'INVITATION<input id="room-link" readonly></label>
+          <button id="copy-invite" class="online-button secondary-online">COPIER LE LIEN</button>
+          <button id="start-online" class="online-button">LANCER LA PARTIE À DEUX</button>
+          <button id="leave-online" class="online-button secondary-online">QUITTER LE LOBBY</button>
+        </div>
+        <div class="join-area">
+          <b>REJOINDRE UN AMI</b>
+          <label class="online-field">CODE DU LOBBY<input id="join-room" placeholder="Ex. AB12CD" maxlength="6"></label>
+          <label class="online-field">MOT DE PASSE<input id="join-password" type="password" placeholder="Mot de passe reçu de l'hôte"></label>
+          <button id="join-lobby" class="online-button secondary-online">REJOINDRE LE LOBBY</button>
+        </div>
+      </section>
       <div class="setup">
         <div class="setup-title"><span>PARAMÈTRES</span></div>
         <div class="settings-grid">
@@ -114,6 +134,6 @@
   }, 7000);
 })();
 </script>
-<script type="module" src="./app.js?v=20261114-27" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
+<script type="module" src="./app.js?v=20261114-28" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
 </body>
 </html>
