@@ -16,8 +16,9 @@ function code(length) {
 function passwordHash(value) {
   return crypto.createHash('sha256').update(String(value)).digest();
 }
-function samePassword(a, b) {
-  return crypto.timingSafeEqual(passwordHash(a), passwordHash(b));
+function samePassword(value, storedHash) {
+  const candidate = passwordHash(value);
+  return Buffer.isBuffer(storedHash) && candidate.length === storedHash.length && crypto.timingSafeEqual(candidate, storedHash);
 }
 function send(ws, type, data = {}) {
   if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type, ...data }));
