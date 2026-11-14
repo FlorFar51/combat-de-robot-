@@ -263,7 +263,22 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;$('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);resize();camera.position.set(0,mode==='sumo'?19:mode==='combat'?27:20,mode==='combat'?34:mode==='hockey'?27:19);camera.lookAt(0,0,0);try{renderer.setClearColor(0x080808,1);renderer.render(scene,camera);requestAnimationFrame(()=>{resize();renderer.render(scene,camera)})}catch(error){window.__showArenaDiagnostic?.('ERREUR AU DÉMARRAGE DU RENDU : '+(error?.message||String(error)),true)}}
+function startMatch(){
+ if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}
+ sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
+ $('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();
+ buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);
+ // Attendre que l'écran de match soit réellement affiché avant de dimensionner le canvas.
+ const showAndRender=()=>{
+  const rect=arenaScreen.getBoundingClientRect(),w=Math.max(1,Math.floor(rect.width)),h=Math.max(1,Math.floor(rect.height));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+  camera.position.set(0,mode==='sumo'?19:mode==='combat'?27:20,mode==='combat'?34:mode==='hockey'?27:19);camera.lookAt(0,0,0);
+  renderer.setClearColor(0x080808,1);renderer.clear(true,true,true);renderer.render(scene,camera);
+ };
+ try{showAndRender();requestAnimationFrame(()=>{try{showAndRender()}catch(error){window.__showArenaDiagnostic?.('ERREUR AU PREMIER RENDU : '+(error?.message||String(error)),true)}})}
+ catch(error){window.__showArenaDiagnostic?.('ERREUR AU DÉMARRAGE DU RENDU : '+(error?.message||String(error)),true)}
+}
 function backMenu(){ended=true;countdown=0;$('#countdown').classList.add('hidden');sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 $('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
