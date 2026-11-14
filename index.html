@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="stylesheet" href="./style.css?v=20261114-7">
+<link rel="stylesheet" href="./style.css?v=20261114-8">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
-  <canvas id="arena-canvas" aria-label="Arène 3D"></canvas>
   <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
@@ -68,6 +67,7 @@
   </section>
 
   <section id="arena-screen" class="screen hidden">
+    <canvas id="arena-canvas" aria-label="Arène 3D"></canvas>
     <div id="hud">
       <div class="hud-top"><button id="back-menu" class="small-button">← MENU</button><div class="hud-mode" id="hud-mode">COMBAT</div><div class="timer" id="timer">03:00</div></div>
       <div class="score-row">
