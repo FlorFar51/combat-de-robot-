@@ -268,10 +268,13 @@ function updatePuck(dt){
    const factor=nextSpeed/speed;
    puck.userData.vx*=factor;puck.userData.vz*=factor;
   }
-  // But validé dès que le palet franchit la ligne dans l'ouverture de 4.6 unités.
-  if(puck.position.x>15.7&&Math.abs(puck.position.z)<2.3){scoreGoal('blue');return}
-  if(puck.position.x<-15.7&&Math.abs(puck.position.z)<2.3){scoreGoal('red');return}
-  if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-(.05+puckBounce*.009)}
+  // Le palet (rayon 0,43) doit être entièrement derrière la ligne de but x = +/-16.
+  // L'ouverture utile est réduite de son rayon pour éviter qu'un palet touche un poteau.
+  const insideGoal=Math.abs(puck.position.z)<1.87;
+  if(insideGoal&&puck.position.x>16.43){scoreGoal('blue');return}
+  if(insideGoal&&puck.position.x< -16.43){scoreGoal('red');return}
+  // Hors de l'ouverture, les bandes latérales bloquent le palet.
+  if(Math.abs(puck.position.x)>15.7&&!insideGoal){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-(.05+puckBounce*.009)}
   if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-(.05+puckBounce*.009)}
  }
  const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
