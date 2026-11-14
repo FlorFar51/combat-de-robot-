@@ -229,7 +229,7 @@ function setMode(m){
  mode=m;
  tunedSpeed=m==='sumo'?7.8:2.7;tunedRotation=m==='sumo'?11:2.0;
  const speedControl=$('#tune-speed'),rotationControl=$('#tune-rotation');
- if(speedControl&&rotationControl){speedControl.value=tunedSpeed;rotationControl.value=tunedRotation;if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
+ if(speedControl&&rotationControl){const speedHalfRange=2;speedControl.min=(tunedSpeed-speedHalfRange).toFixed(1);speedControl.max=(tunedSpeed+speedHalfRange).toFixed(1);speedControl.value=tunedSpeed;rotationControl.min='9';rotationControl.max='19';rotationControl.value=tunedRotation;if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
  document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('selected',c.dataset.mode===m));
  const data={
  combat:{title:'RÈGLES · COMBAT',items:['Duel dans une arène fermée.','L’arme rotative inflige des dégâts sur les impacts.','Un robot neutralisé ou à 0 % est éliminé.','À la fin du temps, le plus d’intégrité gagne.'],help:'Combat : E pour une attaque supplémentaire.',labels:['INTÉGRITÉ','INTÉGRITÉ']},
