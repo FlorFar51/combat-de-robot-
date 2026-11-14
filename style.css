@@ -63,3 +63,8 @@
 /* V.13 — diagnostic persistant en haut de l'écran pendant le match. */
 #engine-diagnostic{top:12px;left:50%;transform:translateX(-50%);width:min(760px,calc(100% - 24px));padding:9px 12px;font-size:11px;line-height:1.35;z-index:10000}
 #arena-screen>#arena-canvas{width:100%!important;height:100%!important;min-width:1px;min-height:1px}
+
+
+/* V.14 — arène 3D : diagnostic de géométrie et canvas, sans sonde temporisée. */
+#arena-screen{background:#080808!important}
+#arena-screen>#arena-canvas{display:block!important;visibility:visible!important;opacity:1!important}
