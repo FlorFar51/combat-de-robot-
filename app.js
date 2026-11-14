@@ -271,7 +271,7 @@ function startMatch(){
  // Sonde visuelle temporaire : vérifie concrètement que la scène 3D est dessinée.
  const renderProbe=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.2,3.2),new THREE.MeshBasicMaterial({color:0xff00ff}));
  renderProbe.position.set(0,2.2,0);scene.add(renderProbe);
- window.__showArenaDiagnostic?.('TEST 3D V.10 — un cube magenta doit apparaître au centre pendant 3 secondes.');
+ window.__showArenaDiagnostic?.('TEST 3D V.12 — un cube magenta doit apparaître au centre pendant 3 secondes.');
  setTimeout(()=>{scene.remove(renderProbe);renderProbe.geometry.dispose();renderProbe.material.dispose();window.__hideArenaDiagnostic?.()},9000);
  // Attendre que l'écran de match soit réellement affiché avant de dimensionner le canvas.
  const showAndRender=()=>{
