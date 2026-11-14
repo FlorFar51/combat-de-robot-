@@ -5,6 +5,8 @@ const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(0,18,2
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;game.insertBefore(renderer.domElement,menu);
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
+const DEFAULT_BINDINGS={forward:'KeyZ',backward:'KeyS',left:'KeyQ',right:'KeyD',boost:'Space',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,sawEnabled=false;
+const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let mode='combat',player,enemy,puck,ended=true,remaining=180,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0;
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
@@ -86,7 +88,7 @@ function drive(bot,dt,throttle,steer,boost=false){
  const turn=mode==='sumo'?11:mode==='hockey'?12:11;
  bot.root.rotation.y+=steer*turn*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
  bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
- if(mode==='combat')bot.weapon.rotation.y+=dt*20;
+ if(mode==='combat'&&sawEnabled&&bot===player)bot.weapon.rotation.y+=dt*20;
  bot.cooldown=Math.max(0,bot.cooldown-dt);
 }
 function aim(bot,x,z,aggression=1){const dx=x-bot.root.position.x,dz=z-bot.root.position.z,desired=Math.atan2(dx,dz);let d=((desired-bot.root.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI;return {throttle:Math.abs(d)>2.5?.15:aggression,steer:clamp(d*3.8,-1,1)}}
@@ -134,15 +136,34 @@ function setMode(m){
  $('#rules-title').textContent=data.title;$('#rules-list').innerHTML=data.items.map(x=>'<li>'+x+'</li>').join('');$('#mode-help').textContent=data.help;$('#label-blue').textContent=data.labels[0];$('#label-red').textContent=data.labels[1];$('#action-button').textContent=m==='hockey'?'TIR':'ATTAQUE';$('#weight-setting').style.display=m==='combat'?'grid':'none';$('.settings-grid').style.gridTemplateColumns=m==='combat'?'repeat(3,1fr)':'repeat(2,1fr)';
 }
 document.querySelectorAll('.mode-card').forEach(c=>c.addEventListener('click',()=>setMode(c.dataset.mode)));setMode('combat');
+function keyLabel(code){if(code==='Space')return 'ESPACE';if(code.startsWith('Key'))return code.slice(3);if(code.startsWith('Digit'))return code.slice(5);return code}
+function renderBindings(){document.querySelectorAll('[data-bind]').forEach(b=>b.textContent=keyLabel(bindings[b.dataset.bind]))}
+function openControls(){$('#mode-setup').classList.remove('hidden');$('.menu-content').classList.add('hidden');$('#controls-panel').classList.remove('hidden');renderBindings();scanGamepads()}
+function closeControls(){$('#controls-panel').classList.add('hidden');$('.menu-content').classList.remove('hidden')}
+$('#controls-tab').addEventListener('click',openControls);$('#controls-back').addEventListener('click',closeControls);
+document.querySelectorAll('[data-bind]').forEach(b=>b.addEventListener('click',()=>{if(waitingForBind)waitingForBind.classList.remove('waiting');waitingForBind=b;b.classList.add('waiting');b.textContent='APPUIE…'}));
+$('#reset-bindings').addEventListener('click',()=>{bindings={...DEFAULT_BINDINGS};try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}waitingForBind=null;renderBindings()});
+try{const saved=JSON.parse(localStorage.getItem('robotArenaBindings')||'null');if(saved)for(const k of Object.keys(DEFAULT_BINDINGS))if(typeof saved[k]==='string')bindings[k]=saved[k]}catch{}renderBindings();
+function scanGamepads(){const pads=navigator.getGamepads?navigator.getGamepads():[];activeGamepad=[...pads].find(p=>p&&p.connected)||null;const box=$('#gamepad-status');if(activeGamepad){box.classList.add('connected');box.querySelector('b').textContent='CONTRÔLEUR CONNECTÉ';box.querySelector('small').textContent=activeGamepad.id+' · '+activeGamepad.axes.length+' axes · '+activeGamepad.buttons.length+' boutons';$('#live-device').textContent='CONNECTÉ'}else{box.classList.remove('connected');box.querySelector('b').textContent='AUCUN CONTRÔLEUR DÉTECTÉ';box.querySelector('small').textContent='Connecte une manette ou un contrôleur FPV, puis appuie sur un bouton.';$('#live-device').textContent='EN ATTENTE'}}
+addEventListener('gamepadconnected',scanGamepads);addEventListener('gamepaddisconnected',()=>{activeGamepad=null;scanGamepads()});
+document.querySelectorAll('[data-assign]').forEach(b=>b.addEventListener('click',()=>{if(assigning)assigning.classList.remove('waiting');assigning=b;b.classList.add('waiting');$('#assign-hint').textContent=b.dataset.assign==='saw'?'Appuie sur le bouton que tu veux affecter à la scie.':'Déplace uniquement le stick ou l’axe souhaité jusqu’en butée.';b.textContent='EN ATTENTE…'}));
+function readController(){const pads=navigator.getGamepads?navigator.getGamepads():[];const p=activeGamepad&&pads[activeGamepad.index]?.connected?pads[activeGamepad.index]:[...pads].find(x=>x&&x.connected);if(!p){activeGamepad=null;return}activeGamepad=p;const axes=p.axes||[],buttons=p.buttons||[];
+ if(assigning){if(assigning.dataset.assign==='saw'){const i=buttons.findIndex(x=>x&&x.pressed);if(i>=0){controllerMap.saw.button=i;assigning.textContent='BOUTON '+(i+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Bouton affecté. Teste-le en appuyant dessus.'}}else{let best=-1,bestVal=.55;for(let i=0;i<axes.length;i++){const v=Math.abs(axes[i]||0);if(v>bestVal){best=i;bestVal=v}}if(best>=0){const kind=assigning.dataset.assign;controllerMap[kind]={axis:best,invert:(axes[best]||0)<0?1:-1};assigning.textContent='AXE '+(best+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Axe affecté. Déplace-le pour vérifier la réponse en direct.'}}}
+ const t=controllerMap.throttle,s=controllerMap.steering;let throttle=t.axis<axes.length?(axes[t.axis]||0)*t.invert:0,steering=s.axis<axes.length?(axes[s.axis]||0)*s.invert:0;throttle=Math.abs(throttle)<.12?0:throttle;steering=Math.abs(steering)<.12?0:steering;
+ const sawIndex=controllerMap.saw.button,sawPressed=!!buttons[sawIndex]?.pressed;
+ $('#throttle-meter').style.width=Math.abs(throttle)*50+'%';$('#throttle-meter').style.left='50%';$('#throttle-meter').style.transform='translateX('+(throttle<0?'-100%':'0')+')';$('#steering-meter').style.width=Math.abs(steering)*50+'%';$('#steering-meter').style.left='50%';$('#steering-meter').style.transform='translateX('+(steering<0?'-100%':'0')+')';$('#throttle-value').textContent=Math.round(throttle*100)+'%';$('#steering-value').textContent=Math.round(steering*100)+'%';
+ const indicator=$('#saw-indicator');indicator.textContent=sawEnabled?'ACTIVÉE':'ARRÊTÉE';indicator.classList.toggle('active',sawEnabled);
+ return {throttle,steering,sawPressed};}
+function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){remaining=Number($('#duration').value);aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=false;$('#end').classList.add('hidden');$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
-function backMenu(){ended=true;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
+function startMatch(){sawEnabled=false;remaining=Number($('#duration').value);aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=false;$('#end').classList.add('hidden');$('#hud-mode').textContent=mode.toUpperCase();buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining)}
+function backMenu(){ended=true;sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 $('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
-addEventListener('keydown',e=>{keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
+addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
 document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;b.setPointerCapture?.(e.pointerId)});const up=e=>{e.preventDefault();keys[k]=false};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',()=>keys[k]=false)});
 function resize(){const w=game.clientWidth,h=game.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);resize();
 function loop(){
- requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);goalLock=Math.max(0,goalLock-dt);
+ requestAnimationFrame(loop);const dt=Math.min(clock.getDelta(),.04);const padInput=readController();goalLock=Math.max(0,goalLock-dt);
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
