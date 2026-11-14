@@ -18,7 +18,7 @@ const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
 const controllerMap={throttle:{axis:2,invert:1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
-let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.5,puckBounce=65;
+let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.1,puckBounce=10;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
@@ -263,7 +263,7 @@ function updatePuck(dt){
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
   if(puckGlide<=0){puck.userData.vx=0;puck.userData.vz=0}
   else if(speed>0){
-   const deceleration=(.12+speed*.008)*(1-puckGlide/100);
+   const deceleration=2*(.12+speed*.008)*(1-puckGlide/100);
    const nextSpeed=Math.max(0,speed-deceleration*step);
    const factor=nextSpeed/speed;
    puck.userData.vx*=factor;puck.userData.vz*=factor;
@@ -337,7 +337,7 @@ function connectNetwork(serverUrl){
    }else if(msg.type==='remote_input'){
     net.remote={throttle:msg.throttle||0,steering:msg.steering||0,action:!!msg.action};
    }else if(msg.type==='start'){
-    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??.5),0,1);puckBounce=clamp(Number(msg.puckBounce??65),0,100);$('#puck-glide').value=String(puckGlide*100);$('#puck-glide-value').textContent=(puckGlide*100).toFixed(0)+' %';$('#puck-bounce').value=String(puckBounce);$('#puck-bounce-value').textContent=puckBounce+' %';const receivedDuration=msg.mode==='hockey'?300:clamp(Number(msg.duration)||120,30,7200);$('#duration').value=[60,120,180,300,600].includes(receivedDuration)?String(receivedDuration):'custom';$('#custom-duration').value=String(Math.round(receivedDuration/60));$('#custom-duration-setting').style.display=$('#duration').value==='custom'?'grid':'none';startMatch(msg.startAt,receivedDuration)}
+    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??.1),0,1);puckBounce=clamp(Number(msg.puckBounce??10),0,100);$('#puck-glide').value=String(puckGlide*100);$('#puck-glide-value').textContent=(puckGlide*100).toFixed(0)+' %';$('#puck-bounce').value=String(puckBounce);$('#puck-bounce-value').textContent=puckBounce+' %';const receivedDuration=msg.mode==='hockey'?300:clamp(Number(msg.duration)||120,30,7200);$('#duration').value=[60,120,180,300,600].includes(receivedDuration)?String(receivedDuration):'custom';$('#custom-duration').value=String(Math.round(receivedDuration/60));$('#custom-duration-setting').style.display=$('#duration').value==='custom'?'grid':'none';startMatch(msg.startAt,receivedDuration)}
    }else if(msg.type==='state'&&net.role==='guest'){
     applyNetworkState(msg.state);
    }else if(msg.type==='end'&&net.role==='guest'){
