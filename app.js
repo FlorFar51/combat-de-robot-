@@ -167,9 +167,15 @@ function loop(){
  if(!ended&&player&&enemy){
   remaining-=dt;if(remaining<=0){remaining=0;finish(mode==='combat'?(player.hp>=enemy.hp?'BLEU':'ROUGE'):mode==='sumo'?(roundBlue>=roundRed?'BLEU':'ROUGE'):(scoreBlue>=scoreRed?'BLEU':'ROUGE'),'Temps écoulé.')}
   $('#timer').textContent=fmt(remaining);
-  const f=(keys.KeyW||keys.KeyZ||keys.ArrowUp?1:0)-(keys.KeyS||keys.KeyX||keys.ArrowDown?1:0),s=(keys.KeyA||keys.KeyQ||keys.ArrowLeft?1:0)-(keys.KeyD||keys.ArrowRight?1:0);
-  drive(player,dt,f,s,!!keys.Space);updateAI(dt);
-  if(mode==='hockey'){updatePuck(dt);if(keys.KeyE)attackPuck(player)}
+  const keyboardThrottle=Number(actionDown('forward'))-Number(actionDown('backward'));
+  const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
+  const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
+  const steering=padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer;
+  const sawKey=actionDown('action'),sawButton=!!padInput?.sawPressed,sawInput=sawKey||sawButton;
+  if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
+  lastSawKey=sawInput;
+  drive(player,dt,f,steering,actionDown('boost'));updateAI(dt);
+  if(mode==='hockey'){updatePuck(dt);if(sawInput)attackPuck(player)}
   else{collideBots(player,enemy,dt);if(mode==='sumo')updateSumo();else if(player.hp<=0||enemy.hp<=0)finish(player.hp>enemy.hp?'BLEU':'ROUGE','Robot neutralisé.')}
   updateHud();
  }
