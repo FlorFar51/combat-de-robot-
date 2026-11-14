@@ -18,7 +18,7 @@ const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
 const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
-let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0;
+let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=65;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
@@ -44,7 +44,7 @@ function buildArena(){
  // Patinoire rectangulaire : les cages sont placées à gauche et à droite.
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
  for(const x of [-halfWidth,halfWidth]){
-  for(const z of [-5.3,5.3])add(new THREE.BoxGeometry(.3,.65,7.4),M.black,world,x,.12,z);
+  for(const z of [-5.65,5.65])add(new THREE.BoxGeometry(.3,.65,6.7),M.black,world,x,.12,z);
   for(const z of [-2.3,2.3])add(new THREE.BoxGeometry(.12,1.25,.12),M.steel,world,x,.57,z);
   add(new THREE.BoxGeometry(.12,.12,4.6),M.steel,world,x,1.2,0);
   const net=add(new THREE.BoxGeometry(.9,.9,4.5),mat(0x222222),world,x+(x>0?.5:-.5),.52,0);net.material.transparent=true;net.material.opacity=.5;
@@ -257,13 +257,14 @@ function updatePuck(dt){
   // Frottement faible et progressif : le palet conserve son élan puis ralentit sans s'arrêter brutalement.
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
   if(speed>0){
-   const deceleration=1.15+speed*.035;
+   const deceleration=.25+(100-puckGlide)*.055+speed*.012;
    const nextSpeed=Math.max(0,speed-deceleration*step);
    const factor=nextSpeed/speed;
    puck.userData.vx*=factor;puck.userData.vz*=factor;
   }
-  if(puck.position.x>16.15&&Math.abs(puck.position.z)<2.05){scoreGoal('blue');return}
-  if(puck.position.x<-16.15&&Math.abs(puck.position.z)<1.35){scoreGoal('red');return}
+  // But validé dès que le palet franchit la ligne dans l'ouverture de 4.6 unités.
+  if(puck.position.x>15.7&&Math.abs(puck.position.z)<2.3){scoreGoal('blue');return}
+  if(puck.position.x<-15.7&&Math.abs(puck.position.z)<2.3){scoreGoal('red');return}
   if(Math.abs(puck.position.x)>15.7){puck.position.x=clamp(puck.position.x,-15.7,15.7);puck.userData.vx*=-.72}
   if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-.72}
  }
@@ -285,13 +286,14 @@ function setMode(m){
  tunedSpeed=m==='hockey'?9.8:12;tunedRotation=14;
  const speedControl=$('#tune-speed'),rotationControl=$('#tune-rotation');
  if(speedControl&&rotationControl){const speedHalfRange=2;speedControl.min=(tunedSpeed-speedHalfRange).toFixed(1);speedControl.max=(tunedSpeed+speedHalfRange).toFixed(1);speedControl.value=tunedSpeed;rotationControl.min='9';rotationControl.max='19';rotationControl.value=tunedRotation;if($('#tune-speed-value'))$('#tune-speed-value').textContent=tunedSpeed.toFixed(1)+' m/s';if($('#tune-rotation-value'))$('#tune-rotation-value').textContent=tunedRotation.toFixed(1)+' rad/s'}
+  if($('#puck-glide')){$('#puck-glide').value=String(puckGlide);$('#puck-glide-value').textContent=puckGlide+' %'}
  document.querySelectorAll('.mode-card').forEach(c=>c.classList.toggle('selected',c.dataset.mode===m));
  const data={
  combat:{title:'RÈGLES · COMBAT',items:['Duel dans une arène fermée.','Chaque contact réussi avec l’adversaire rapporte un point.','Le match dure jusqu’à la fin du chronomètre.','Le robot ayant provoqué le plus de contacts gagne.'],help:'Combat : percute ton adversaire pour marquer des contacts. E active la scie.',labels:['CONTACTS','CONTACTS']},
  sumo:{title:'RÈGLES · SUMO',items:['Deux robots se font face sur un dohyo circulaire.','Pousse l’adversaire hors du cercle.','Sortir du dohyo fait perdre la manche.','Le premier à gagner deux manches remporte le match.'],help:'Sumo : pousse l’adversaire hors du dohyo.',labels:['MANCHES','MANCHES']},
  hockey:{title:'RÈGLES · HOCKEY',items:['Deux robots s’affrontent sur une patinoire avec un palet.','Les cages sont placées à gauche et à droite du terrain.','Un but est marqué lorsque le palet franchit la ligne dans la cage.','Le premier à marquer trois buts gagne.'],help:'Hockey : E pour frapper le palet.',labels:['BUTS','BUTS']}
  }[m];
- $('#rules-title').textContent=data.title;$('#rules-list').innerHTML=data.items.map(x=>'<li>'+x+'</li>').join('');$('#mode-help').textContent=data.help;$('#label-blue').textContent=data.labels[0];$('#label-red').textContent=data.labels[1];$('#action-button').textContent=m==='hockey'?'TIR':'SCIE';$('#weight-setting').style.display=m==='combat'?'grid':'none';$('.settings-grid').style.gridTemplateColumns=m==='combat'?'repeat(3,1fr)':'repeat(2,1fr)';
+ $('#rules-title').textContent=data.title;$('#rules-list').innerHTML=data.items.map(x=>'<li>'+x+'</li>').join('');$('#mode-help').textContent=data.help;$('#label-blue').textContent=data.labels[0];$('#label-red').textContent=data.labels[1];$('#action-button').textContent=m==='hockey'?'TIR':'SCIE';$('#weight-setting').style.display=m==='combat'?'grid':'none';$('#puck-glide-setting').style.display=m==='hockey'?'grid':'none';$('.settings-grid').style.gridTemplateColumns=m==='combat'?'repeat(3,1fr)':'repeat(2,1fr)';
 }
 
 function netStatus(message){const el=$('#network-status');if(el)el.textContent=message}
@@ -323,7 +325,7 @@ function connectNetwork(serverUrl){
    }else if(msg.type==='remote_input'){
     net.remote={throttle:msg.throttle||0,steering:msg.steering||0,action:!!msg.action};
    }else if(msg.type==='start'){
-    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';startMatch()}
+    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??65),0,100);$('#puck-glide').value=String(puckGlide);$('#puck-glide-value').textContent=puckGlide+' %';startMatch(msg.startAt)}
    }else if(msg.type==='state'&&net.role==='guest'){
     applyNetworkState(msg.state);
    }else if(msg.type==='end'&&net.role==='guest'){
@@ -352,11 +354,13 @@ async function joinOnlineLobby(){
  try{const params=new URLSearchParams(location.search),room=($('#join-room').value||params.get('room')||'').trim().toUpperCase(),password=$('#join-password').value.trim(),server=normalizeServerUrl($('#server-url').value||params.get('server')||'');if(!room)throw new Error('Identifiant du lobby manquant dans le lien.');if(!password)throw new Error('Saisis le mot de passe reçu de ton ami.');await connectNetwork(server);wsSend('join',{roomId:room,password})}
  catch(e){netStatus(e.message||String(e))}
 }
+$('#puck-glide').addEventListener('input',e=>{puckGlide=clamp(Number(e.target.value)||0,0,100);$('#puck-glide-value').textContent=puckGlide+' %'});
 $('#create-lobby').addEventListener('click',createOnlineLobby);
 $('#join-lobby').addEventListener('click',joinOnlineLobby);
 $('#copy-invite').addEventListener('click',()=>{const value=$('#room-link').value;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Lien copié')).catch(()=>{$('#room-link').select();netStatus('Copie le lien sélectionné')});else{$('#room-link').select();netStatus('Copie le lien sélectionné')}});
 $('#copy-password').addEventListener('click',()=>{const value=$('#room-password').textContent;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Mot de passe copié'))});
-$('#start-online').addEventListener('click',()=>{if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');wsSend('start',{mode,difficulty:$('#difficulty').value});startMatch()});
+function launchOnlineMatch(){if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');const startAt=Date.now()+3000;wsSend('start',{mode,difficulty:$('#difficulty').value,puckGlide,startAt});startMatch(startAt)}
+$('#start-online').addEventListener('click',launchOnlineMatch);
 $('#leave-online').addEventListener('click',()=>{wsSend('leave');if(net.ws)net.ws.close();net.role=null;net.roomId=null;$('#online-state').textContent='Hors du lobby';netStatus('Lobby quitté')});
 try{const params=new URLSearchParams(location.search);$('#server-url').value=params.get('server')||localStorage.getItem('robotArenaServerUrl')||'';if(params.get('room')){$('#join-room').value=params.get('room');$('#online-state').textContent='Invitation reçue · saisis le mot de passe'}}catch{}
 
@@ -385,9 +389,9 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
  return {throttle,steering,sawPressed};}
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
-function startMatch(){
+function startMatch(syncStartAt){
  if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}
- sawEnabled=false;remaining=120;countdown=3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
+ sawEnabled=false;remaining=120;countdown=syncStartAt?Math.max(0,(syncStartAt-Date.now())/1000):3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
  $('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();
  buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);
  // V.14 : supprimer la sonde temporaire V.12 qui masquait le diagnostic après 9 s.
@@ -403,7 +407,8 @@ function startMatch(){
  catch(error){window.__showArenaDiagnostic?.('ERREUR AU DÉMARRAGE DU RENDU : '+(error?.message||String(error)),true)}
 }
 function backMenu(){ended=true;countdown=0;$('#countdown').classList.add('hidden');sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
-$('#start').addEventListener('click',startMatch);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',startMatch);
+function requestMatchStart(){if(net.role==='guest')return netStatus('En attente du lancement par l’hôte.');if(net.role==='host'&&net.opponent)return launchOnlineMatch();startMatch()}
+$('#start').addEventListener('click',requestMatchStart);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',requestMatchStart);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
 const touchActions={KeyW:'forward',KeyS:'backward',KeyA:'left',KeyD:'right',KeyE:'action'};document.querySelectorAll('[data-key]').forEach(b=>{const action=touchActions[b.dataset.key];let code=null;b.addEventListener('pointerdown',e=>{e.preventDefault();code=bindings[action]||b.dataset.key;keys[code]=true;b.setPointerCapture?.(e.pointerId)});const up=e=>{e.preventDefault();if(code)keys[code]=false;code=null};b.addEventListener('pointerup',up);b.addEventListener('pointercancel',up);b.addEventListener('lostpointercapture',up)});
 function resize(){const rect=arenaScreen.getBoundingClientRect();const w=Math.max(1,Math.floor(rect.width||game.clientWidth)),h=Math.max(1,Math.floor(rect.height||game.clientHeight));camera.aspect=w/h;camera.updateProjectionMatrix();if(renderer)renderer.setSize(w,h,false)}new ResizeObserver(resize).observe(game);new ResizeObserver(resize).observe(arenaScreen);resize();
