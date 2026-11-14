@@ -2,7 +2,7 @@ import * as THREE from 'three';
 const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen');
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x080808);scene.fog=new THREE.Fog(0x080808,45,95);
 const camera=new THREE.PerspectiveCamera(48,1,.1,100);camera.position.set(0,18,20);
-const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;game.insertBefore(renderer.domElement,menu);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.setClearColor(0x080808,1);arenaScreen.insertBefore(renderer.domElement,arenaScreen.firstChild);renderer.domElement.setAttribute('aria-hidden','true');
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
