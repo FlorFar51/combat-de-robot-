@@ -85,7 +85,7 @@ function buildMatch(){buildArena();player=makeRobot('blue');enemy=makeRobot('red
 function drive(bot,dt,throttle,steer){
  if(!bot.alive)return;
  const max=mode==='sumo'?13:mode==='hockey'?15:14,accel=mode==='sumo'?13:mode==='hockey'?15:14;
- bot.v+=clamp(throttle,-1,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,-max*.72,max);
+ bot.v+=clamp(throttle,0,1)*accel*dt;bot.v*=Math.pow(.992,dt*60);bot.v=clamp(bot.v,0,max);
  const turn=mode==='sumo'?11:mode==='hockey'?12:11;
  bot.root.rotation.y+=steer*turn*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;
  bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt;
@@ -172,7 +172,7 @@ addEventListener('gamepadconnected',scanGamepads);addEventListener('gamepaddisco
 document.querySelectorAll('[data-assign]').forEach(b=>b.addEventListener('click',()=>{if(assigning)assigning.classList.remove('waiting');assigning=b;b.classList.add('waiting');$('#assign-hint').textContent=b.dataset.assign==='saw'?'Appuie sur le bouton que tu veux affecter à la scie.':'Déplace uniquement le stick ou l’axe souhaité jusqu’en butée.';b.textContent='EN ATTENTE…'}));
 function readController(){const pads=navigator.getGamepads?navigator.getGamepads():[];const p=activeGamepad&&pads[activeGamepad.index]?.connected?pads[activeGamepad.index]:[...pads].find(x=>x&&x.connected);if(!p){activeGamepad=null;$('#throttle-meter').style.width='0%';$('#steering-meter').style.width='0%';$('#throttle-value').textContent='0%';$('#steering-value').textContent='0%';$('#saw-indicator').textContent=sawEnabled?'ACTIVÉE':'ARRÊTÉE';$('#saw-indicator').classList.toggle('active',sawEnabled);return}activeGamepad=p;const axes=p.axes||[],buttons=p.buttons||[];
  if(assigning){if(assigning.dataset.assign==='saw'){const i=buttons.findIndex(x=>x&&x.pressed);if(i>=0){controllerMap.saw.button=i;assigning.textContent='BOUTON '+(i+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Bouton affecté. Teste-le en appuyant dessus.'}}else{let best=-1,bestVal=.55;for(let i=0;i<axes.length;i++){const v=Math.abs(axes[i]||0);if(v>bestVal){best=i;bestVal=v}}if(best>=0){const kind=assigning.dataset.assign;controllerMap[kind]={axis:best,invert:(axes[best]||0)<0?1:-1};assigning.textContent='AXE '+(best+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Axe affecté. Déplace-le pour vérifier la réponse en direct.'}}}
- const t=controllerMap.throttle,s=controllerMap.steering;let throttle=t.axis<axes.length?(axes[t.axis]||0)*t.invert:0,steering=s.axis<axes.length?(axes[s.axis]||0)*s.invert:0;throttle=Math.abs(throttle)<.12?0:throttle;steering=Math.abs(steering)<.12?0:steering;
+ const t=controllerMap.throttle,s=controllerMap.steering;let rawThrottle=t.axis<axes.length?(axes[t.axis]||0)*t.invert:0,throttle=invertThrottle?Math.max(0,-rawThrottle):Math.max(0,rawThrottle),steering=s.axis<axes.length?(axes[s.axis]||0)*s.invert:0;steering*=invertSteering?-1:1;throttle=Math.abs(throttle)<.12?0:throttle;steering=Math.abs(steering)<.12?0:steering;
  const sawIndex=controllerMap.saw.button,sawPressed=!!buttons[sawIndex]?.pressed;if(ended&&!$('#controls-panel').classList.contains('hidden')&&sawPressed&&!lastControllerSaw)sawEnabled=!sawEnabled;lastControllerSaw=sawPressed;
  $('#throttle-meter').style.width=Math.abs(throttle)*50+'%';$('#throttle-meter').style.left='50%';$('#throttle-meter').style.transform='translateX('+(throttle<0?'-100%':'0')+')';$('#steering-meter').style.width=Math.abs(steering)*50+'%';$('#steering-meter').style.left='50%';$('#steering-meter').style.transform='translateX('+(steering<0?'-100%':'0')+')';$('#throttle-value').textContent=Math.round(throttle*100)+'%';$('#steering-value').textContent=Math.round(steering*100)+'%';
  const indicator=$('#saw-indicator');indicator.textContent=sawEnabled?'ACTIVÉE':'ARRÊTÉE';indicator.classList.toggle('active',sawEnabled);
@@ -198,7 +198,7 @@ function loop(){
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
   drive(player,dt,f,steering);updateAI(dt);confineRobot(player);confineRobot(enemy);
-  if(mode==='hockey'){updatePuck(dt);if(sawInput)attackPuck(player)}
+  if(mode==='hockey'){collideBots(player,enemy,dt);updatePuck(dt);if(sawInput)attackPuck(player)}
   else{collideBots(player,enemy,dt);if(mode==='sumo')updateSumo();else if(player.hp<=0||enemy.hp<=0)finish(player.hp>enemy.hp?'BLEU':'ROUGE','Robot neutralisé.')}
   updateHud();
  }
