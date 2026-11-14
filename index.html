@@ -11,26 +11,26 @@
 <body>
 <main id="game">
   <section id="menu" class="screen">
-    <header class="menu-head"><div class="logo"><span class="logo-mark">R</span><div>ROBOT ARENA<small>ROBOT COMBAT LEAGUE</small></div></div><span class="version">PROTO 02 · 3D</span></header>
+    <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div></header>
     <div class="menu-content">
-      <div class="intro"><p class="eyebrow">CHOISIS TON TERRAIN</p><h1>ENTRE DANS<br><em>L'ARÈNE.</em></h1><p class="sub">Construis ta stratégie. Pilote ton robot. Remporte le match.</p></div>
+      <div class="intro"><h1>CHOISIR UN MODE</h1></div>
       <div class="mode-grid">
-        <button class="mode-card selected" data-mode="combat"><span class="mode-number">01 / DUEL</span><span class="mode-icon">⚙</span><strong>COMBAT</strong><span class="mode-desc">Détruis ou immobilise ton adversaire.</span><span class="mode-arena">ARÈNE FERMÉE · ARMES AUTORISÉES</span></button>
-        <button class="mode-card" data-mode="sumo"><span class="mode-number">02 / DOHYO</span><span class="mode-icon">◉</span><strong>SUMO</strong><span class="mode-desc">Pousse l'adversaire hors du cercle.</span><span class="mode-arena">PLATEAU CIRCULAIRE · SANS ARMES</span></button>
-        <button class="mode-card" data-mode="hockey"><span class="mode-number">03 / MATCH</span><span class="mode-icon">⌁</span><strong>HOCKEY</strong><span class="mode-desc">Marque des buts avec le palet.</span><span class="mode-arena">PATINOIRE · CAGES ET PALET</span></button>
+        <button class="mode-card selected" data-mode="combat"><strong>COMBAT</strong><span class="mode-desc">Détruis ou immobilise ton adversaire.</span></button>
+        <button class="mode-card" data-mode="sumo"><strong>SUMO</strong><span class="mode-desc">Pousse l'adversaire hors du cercle.</span></button>
+        <button class="mode-card" data-mode="hockey"><strong>HOCKEY</strong><span class="mode-desc">Marque des buts avec le palet.</span></button>
       </div>
       <div class="setup">
-        <div class="setup-title"><span>PARAMÈTRES DU MATCH</span><small>PERSONNALISE TA PARTIE</small></div>
+        <div class="setup-title"><span>PARAMÈTRES</span></div>
         <div class="settings-grid">
           <label>DURÉE DU MATCH<select id="duration"><option value="120">2 minutes</option><option value="180" selected>3 minutes</option><option value="300">5 minutes</option></select></label>
           <label>DIFFICULTÉ DE L'IA<select id="difficulty"><option value="easy">Facile</option><option value="normal" selected>Normale</option><option value="hard">Difficile</option></select></label>
-          <label>VITESSE DU ROBOT<select id="speed"><option value="0.8">Lente</option><option value="1" selected>Normale</option><option value="1.25">Rapide</option></select></label>
+          <label id="weight-setting">POIDS DU ROBOT<select id="weight-class"><option value="0.15">Antweight · 150 g</option><option value="1.5" selected>Beetleweight · 1,5 kg</option><option value="13.6">Featherweight · 13,6 kg</option><option value="30">Lightweight · 30 kg</option><option value="55">Middleweight · 55 kg</option><option value="110">Heavyweight · 110 kg</option></select></label>
         </div>
         <div id="rules" class="rules"><div class="rules-heading"><b id="rules-title">RÈGLES DU COMBAT</b><span>MODE SÉLECTIONNÉ</span></div><ul id="rules-list"></ul></div>
         <button id="start" class="start-button">LANCER LE MATCH <span>→</span></button>
       </div>
     </div>
-    <footer>UN JEU DE ROBOTS · CONÇU POUR LE WEB <span>CLAVIER : ZQSD / WASD · ESPACE : BOOST</span></footer>
+    <footer>ROBOT ARENA <span>ZQSD / WASD · ESPACE : BOOST</span></footer>
   </section>
 
   <section id="arena-screen" class="screen hidden">
