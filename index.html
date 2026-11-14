@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-35">
-<link rel="stylesheet" href="./style.css?v=20261114-35">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261114-36">
+<link rel="stylesheet" href="./style.css?v=20261114-36">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
   <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
-  <div id="build-version" aria-label="Version du jeu">V.35</div>
+  <div id="build-version" aria-label="Version du jeu">V.36</div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
@@ -63,7 +63,7 @@
       <div class="controls-columns">
         <div class="control-column"><h3>CLAVIER <span>TOUCHES MODIFIABLES</span></h3><p class="control-hint">Clique sur une touche puis appuie sur celle que tu veux utiliser.</p>
           <div class="keybind-list">
-            <div class="keybind-row"><span>AVANCER</span><button class="keybind" data-bind="forward">Z</button></div>
+            <div class="keybind-row"><span>AVANCE</span><button class="keybind" data-bind="forward">Z</button></div>
             
             <div class="keybind-row"><span>ROTATION GAUCHE</span><button class="keybind" data-bind="left">Q</button></div>
             <div class="keybind-row"><span>ROTATION DROITE</span><button class="keybind" data-bind="right">D</button></div>
@@ -74,9 +74,9 @@
         <div class="control-column"><h3>MANETTE / FPV <span>DÉTECTION AUTO</span></h3>
           <div id="gamepad-status" class="gamepad-status"><i class="device-dot"></i><div><b>AUCUN CONTRÔLEUR DÉTECTÉ</b><small>Connecte une manette USB ou Bluetooth. Appuie sur un bouton si nécessaire.</small></div></div>
           <div id="gamepad-config" class="gamepad-config">
-            <div class="axis-config"><div><b>1 · AVANCE / RECULE</b><small>Un seul axe analogique</small></div><button class="assign-control" data-assign="throttle">AXE 2 · Y</button></div>
+            <div class="axis-config"><div><b>1 · AVANCE</b><small>Commande progressive de 0 à 100 %</small></div><button class="assign-control" data-assign="throttle">AXE 3 · Y</button></div>
             <div class="axis-config"><div><b>2 · ROTATION</b><small>Un seul axe analogique</small></div><button class="assign-control" data-assign="steering">AXE 1 · X</button></div>
-            <div class="axis-config"><div><b>3 · SCIE ON / OFF</b><small>Un bouton : active ou arrête la scie</small></div><button class="assign-control" data-assign="saw">BOUTON 1</button></div>
+            <div class="axis-config"><div><b>3 · SCIE ON / OFF</b><small>Un bouton : active ou arrête la scie</small></div><button class="assign-control" data-assign="saw">BOUTON 2</button></div>
           </div>
           <div class="invert-options"><label><input type="checkbox" id="invert-throttle"> INVERSER L’ACCÉLÉRATION</label><label><input type="checkbox" id="invert-steering"> INVERSER LA DIRECTION</label></div>
           <div class="live-test"><div class="live-title">TEST EN TEMPS RÉEL <span id="live-device">EN ATTENTE</span></div>
@@ -139,6 +139,6 @@
   }, 7000);
 })();
 </script>
-<script type="module" src="./app.js?v=20261114-35" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
+<script type="module" src="./app.js?v=20261114-36" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
 </body>
 </html>
