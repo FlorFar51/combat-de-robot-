@@ -391,7 +391,7 @@ function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
 function startMatch(syncStartAt){
  if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}
- sawEnabled=false;remaining=120;countdown=syncStartAt?Math.max(0,(syncStartAt-Date.now())/1000):3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
+ sawEnabled=false;remaining=120;countdown=syncStartAt?Math.max(.05,(syncStartAt-Date.now())/1000):3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
  $('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();
  buildMatch();updateHud();menu.classList.add('hidden');arenaScreen.classList.remove('hidden');$('#timer').textContent=fmt(remaining);
  // V.14 : supprimer la sonde temporaire V.12 qui masquait le diagnostic après 9 s.
