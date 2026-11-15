@@ -44,11 +44,34 @@ const physicsLab=(()=>{
    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;
    scene.add(new THREE.HemisphereLight(0xc8ddf0,0x343a40,2));
    const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-4,8,5);sun.castShadow=true;scene.add(sun);
-   const floor=new THREE.Mesh(new THREE.BoxGeometry(18,.4,18),mats.ground);floor.position.y=-.2;floor.receiveShadow=true;scene.add(floor);
-   const grid=new THREE.GridHelper(18,36,0x65717c,0x38434d);grid.position.y=.008;scene.add(grid);
+   const floor=new THREE.Mesh(new THREE.BoxGeometry(54,.4,54),mats.ground);floor.position.y=-.2;floor.receiveShadow=true;scene.add(floor);
+   const grid=new THREE.GridHelper(54,108,0x65717c,0x38434d);grid.position.y=.008;scene.add(grid);
    world=new RAPIER.World(V(0,-9.81,0));world.timestep=fixedDt;
    const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.2,0));
-   world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.22).setRestitution(.08),floorBody);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(27,.2,27).setFriction(.22).setRestitution(.08),floorBody);
+   const obstacleMat=mat(0x596b78,.45,.48),rampMat=mat(0x8a765c,.25,.72),tireMat=mat(0x171a1d,.05,.95);
+   function staticBox(w,h,d,x,y,z,rx=0,ry=0,rz=0,material=obstacleMat){
+    const euler=new THREE.Euler(rx,ry,rz),q=new THREE.Quaternion().setFromEuler(euler);
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);mesh.position.set(x,y,z);mesh.rotation.copy(euler);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+    const rb=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:q.x,y:q.y,z:q.z,w:q.w}));
+    world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setFriction(.55).setRestitution(.04),rb);
+   }
+   function staticTire(x,z,r=.72){
+    const mesh=new THREE.Mesh(new THREE.TorusGeometry(r*.72,r*.28,12,28),tireMat);mesh.position.set(x,r*.72,z);mesh.rotation.x=Math.PI/2;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+    const rb=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,r*.72,z));
+    world.createCollider(RAPIER.ColliderDesc.cylinder(r*.28,r).setFriction(.8).setRestitution(.08),rb);
+   }
+   // Rampes longues et douces, accessibles depuis le centre.
+   staticBox(5,.4,8,-6,.48,-7,-.20,0,0,rampMat);
+   staticBox(5,.4,8,7,.48,7,.20,0,0,rampMat);
+   // Marches, blocs bas et petit mur à franchir.
+   staticBox(3,.35,2,0,.18,-5);
+   staticBox(3,.7,2,0,.35,-8);
+   staticBox(2.2,.55,2.2,-8,.275,2);
+   staticBox(2.2,1.0,2.2,8,.5,-2);
+   staticBox(5,.8,.45,0,.4,12);
+   // Pneus fixes à contourner ou franchir.
+   staticTire(-3,5,.78);staticTire(-1,6.5,.78);staticTire(2,5.8,.78);
    body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
    previousRenderPosition=new THREE.Vector3(0,.43,0);currentRenderPosition=new THREE.Vector3(0,.43,0);previousRenderQuaternion=new THREE.Quaternion();currentRenderQuaternion=new THREE.Quaternion();
@@ -137,7 +160,7 @@ const physicsLab=(()=>{
   // La direction est produite uniquement par le différentiel des roues, sans couple direct sur le châssis.
   if(brake){const velocity=body.linvel();body.setLinvel(V(velocity.x*.94,velocity.y,velocity.z*.94),true)}
   // Keep the demo in its test area; this is a soft arena boundary, not a robot movement clamp.
-  if(Math.abs(p.x)>7.5||Math.abs(p.z)>7.5)body.applyImpulse(V(-Math.sign(p.x)*.08,0,-Math.sign(p.z)*.08),true);
+  if(Math.abs(p.x)>25.5||Math.abs(p.z)>25.5)body.applyImpulse(V(-Math.sign(p.x)*.08,0,-Math.sign(p.z)*.08),true);
  }
  function frame(now){
   if(!ready||failed)return;
