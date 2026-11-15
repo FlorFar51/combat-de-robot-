@@ -53,7 +53,7 @@ const physicsLab=(()=>{
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
-    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.23,.08).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.95).setRestitution(.03),body);
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.95).setRestitution(.03),body);
     const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,0);mesh.castShadow=true;
     wheels.push({x,collider:col,mesh,spin:0});
    }
@@ -90,12 +90,12 @@ const physicsLab=(()=>{
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
   const lv=body.linvel();
   // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
-  let grounded=0,rayHits=0;
+  let grounded=0,rayHits=0,appliedMotor=0,firstRay='—';
   for(const w of wheels){
    const origin=localToWorld(w.x,-.20,0),down=V(0,-1,0);
    const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.5,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
-    rayHits++;grounded++;
+    rayHits++;grounded++;if(firstRay==='—')firstRay=hit.toi.toFixed(3)+' m';
     const point=V(origin.x,origin.y-hit.toi,origin.z);
     const wheelForward=localToWorld(0,0,-1),wheelSide=localToWorld(1,0,0);
     const pointVelocity=body.velocityAtPoint(point);
@@ -104,13 +104,13 @@ const physicsLab=(()=>{
     const normalLoad=body.mass()*9.81/2;
     const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
     const desired=(throttle*settings.power*7.5-vForward*(brake?8:2.2));
-    const motor=clamp(desired*body.mass()*.48,-traction,traction);
+    const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;
     const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);
     body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
   }
-  if(++inputDebugFrames%12===0){const msg=document.querySelector('#physics-message');if(msg)msg.textContent='ENTRÉES LABO · Clavier '+(forward?'AVANCE ': '')+(left?'GAUCHE ': '')+(right?'DROITE ':'')+(keyboardBrake?'FREIN ':'')+' · Axe 3 '+axis3.toFixed(2)+' · Consigne '+Math.round(throttle*100)+' % · Direction '+steer.toFixed(2)+' · Roues au sol '+grounded+'/2 · Rayons '+rayHits+'/2 · Vitesse '+Math.hypot(body.linvel().x,body.linvel().z).toFixed(2)+' m/s';}
+   // Secours moteur direct si les raycasts de roues ne détectent aucun contact.\n   if(throttle>0&&grounded===0){const fallback=throttle*settings.power*body.mass()*8;body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);appliedMotor=fallback;}\n   if(++inputDebugFrames%12===0){const msg=document.querySelector('#physics-message');if(msg)msg.textContent='LABO DIAG v75 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+axis3.toFixed(2)+' · Force moteur '+appliedMotor.toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+body.mass().toFixed(1)+' kg · Y '+body.translation().y.toFixed(2)+' m · Vitesse '+Math.hypot(body.linvel().x,body.linvel().z).toFixed(2)+' m/s';}
   // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
   if(grounded>0&&Math.abs(steer)>.01){
    const yawTorque=steer*settings.turn*body.mass()*3.2;
