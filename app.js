@@ -74,6 +74,7 @@ const physicsLab=(()=>{
   }catch(err){failed=true;status.textContent='ERREUR PHYSIQUE';document.querySelector('#physics-message').textContent='Impossible de charger Rapier : '+(err?.message||String(err));console.error(err)}
  }
  function localToWorld(x,y,z){const q=body.rotation();const p=body.translation();const v=new RAPIER.Vector3(x,y,z);const r=q;const xx=v.x,yy=v.y,zz=v.z;v.x=(1-2*(r.y*r.y+r.z*r.z))*xx+2*(r.x*r.y-r.z*r.w)*yy+2*(r.x*r.z+r.y*r.w)*zz;v.y=2*(r.x*r.y+r.z*r.w)*xx+(1-2*(r.x*r.x+r.z*r.z))*yy+2*(r.y*r.z-r.x*r.w)*zz;v.z=2*(r.x*r.z-r.y*r.w)*xx+2*(r.y*r.z+r.x*r.w)*yy+(1-2*(r.x*r.x+r.y*r.y))*zz;return V(p.x+v.x,p.y+v.y,p.z+v.z)}
+ function localDirection(x,y,z){const r=body.rotation(),xx=x,yy=y,zz=z;return V((1-2*(r.y*r.y+r.z*r.z))*xx+2*(r.x*r.y-r.z*r.w)*yy+2*(r.x*r.z+r.y*r.w)*zz,2*(r.x*r.y+r.z*r.w)*xx+(1-2*(r.x*r.x+r.z*r.z))*yy+2*(r.y*r.z-r.x*r.w)*zz,2*(r.x*r.z-r.y*r.w)*xx+2*(r.y*r.z+r.x*r.w)*yy+(1-2*(r.x*r.x+r.y*r.y))*zz)}
  function drive(){
   const forward=keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'),reverse=keys.has('KeyS')||keys.has('ArrowDown'),left=keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),keyboardBrake=keys.has('Space');
   // Laboratoire : A2 (axe Y du joystick gauche / axe 3 indiqué dans l'interface) = avance-recul, A0 (axe X) = direction.
@@ -95,7 +96,7 @@ const physicsLab=(()=>{
   else if(Math.abs(steer)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
   else if(brake)lastLabAction='Frein actif';
   const rot=body.rotation(),p=body.translation();
-  const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
+  const fwd=localDirection(0,0,-1),side=localDirection(1,0,0);
   const lv=body.linvel();
   // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
   let grounded=0,rayHits=0,appliedMotor=0,leftMotor=0,rightMotor=0,leftLateral=0,rightLateral=0,firstRay='—';
@@ -105,7 +106,7 @@ const physicsLab=(()=>{
    if(hit&&hit.collider&&hit.collider!==w.collider){
      rayHits++;grounded++;const toi=Number(hit.toi??hit.timeOfImpact??0);if(firstRay==='—')firstRay=(Number.isFinite(toi)?toi.toFixed(3):'n/a')+' m';
      const point=V(origin.x,origin.y-toi,origin.z);
-    const wheelForward=localToWorld(0,0,-1),wheelSide=localToWorld(1,0,0);
+    const wheelForward=localDirection(0,0,-1),wheelSide=localDirection(1,0,0);
     const pointVelocity=body.velocityAtPoint(point);
     const vForward=pointVelocity.x*wheelForward.x+pointVelocity.y*wheelForward.y+pointVelocity.z*wheelForward.z;
     const vSide=pointVelocity.x*wheelSide.x+pointVelocity.y*wheelSide.y+pointVelocity.z*wheelSide.z;
