@@ -56,8 +56,8 @@ const physicsLab=(()=>{
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
-    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.12).setRestitution(.03),body);
-    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,0);mesh.castShadow=true;
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,.12).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.12).setRestitution(.03),body);
+    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,.12);mesh.castShadow=true;
     wheels.push({x,collider:col,mesh,spin:0,previousSpin:0});
    }
    robotVisual=new THREE.Group();scene.add(robotVisual);
