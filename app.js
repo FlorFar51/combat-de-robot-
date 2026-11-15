@@ -17,7 +17,7 @@ try {
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyW',left:'KeyA',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
-const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
+const controllerMap={throttle:{axis:2,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.1,puckBounce=10;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,lastPing:0,ping:null,hz:60,guestStates:[]};
@@ -77,10 +77,14 @@ const physicsLab=(()=>{
   // Laboratoire : l'avance est affectée à l'axe 3, avec inversion de son sens.
   const pads=typeof navigator!=='undefined'&&navigator.getGamepads?[...navigator.getGamepads()]:[];
   const pad=pads.find(p=>p&&p.connected);
-  const axis3=pad?.axes?.[3]??0;
+  // AXE 3 = troisième axe affiché dans le configurateur (index JS 2), sens inversé.
+  const axis3=pad?.axes?.[2]??0;
   const gamepadThrottle=Math.max(0,-axis3);
   const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
-  const steer=(right?1:0)-(left?1:0);
+  const keyboardSteer=(right?1:0)-(left?1:0);
+  const rawPadSteer=pad?.axes?.[0]??0;
+  const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
+  const steer=keyboardSteer||padSteer;
   const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
   const rot=body.rotation(),p=body.translation();
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
