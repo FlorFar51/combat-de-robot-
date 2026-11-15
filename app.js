@@ -36,7 +36,7 @@ const physicsLab=(()=>{
  async function init(){
   try{
    status.textContent='CHARGEMENT RAPIER…';
-   await RAPIER.init();
+   await RAPIER.init({});
    scene=new THREE.Scene();scene.background=new THREE.Color(0x101820);
    camera=new THREE.PerspectiveCamera(43,1,.1,100);camera.position.set(5.7,5.2,7.4);camera.lookAt(0,.5,0);
    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -110,14 +110,22 @@ const physicsLab=(()=>{
  }
  function frame(now){
   if(!ready||failed)return;
-  const rect=canvas.getBoundingClientRect();
-  if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
-  const dt=Math.min((now-last)/1000||0,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
-  while(accumulator>=fixedDt){drive();world.step();accumulator-=fixedDt}
-  const p=body.translation(),q=body.rotation();robotVisual.position.set(p.x,p.y,p.z);robotVisual.quaternion.set(q.x,q.y,q.z,q.w);
-  wheels.forEach(w=>{w.mesh.rotation.x=w.spin});
-  const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,.055);camera.lookAt(p.x,p.y,p.z);
-  renderer.render(scene,camera);requestAnimationFrame(frame);
+  try{
+   const rect=canvas.getBoundingClientRect();
+   if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
+   const dt=Math.min((now-last)/1000||0,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
+   while(accumulator>=fixedDt){drive();world.step();accumulator-=fixedDt}
+   const p=body.translation(),q=body.rotation();robotVisual.position.set(p.x,p.y,p.z);robotVisual.quaternion.set(q.x,q.y,q.z,q.w);
+   wheels.forEach(w=>{w.mesh.rotation.x=w.spin});
+   const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,.055);camera.lookAt(p.x,p.y,p.z);
+   renderer.render(scene,camera);requestAnimationFrame(frame);
+  }catch(err){
+   failed=true;status.textContent='ERREUR DE SIMULATION';
+   const message='Erreur dans la boucle Rapier : '+(err?.message||String(err));
+   document.querySelector('#physics-message').textContent=message;
+   window.__showArenaDiagnostic?.(message,true);
+   console.error('Physics lab frame failed:',err);
+  }
  }
  function resize(){if(!renderer||!camera)return;const r=canvas.getBoundingClientRect();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);camera.aspect=Math.max(1,r.width)/Math.max(1,r.height);camera.updateProjectionMatrix()}
  window.addEventListener('keydown',e=>{if(['KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,1.05,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
