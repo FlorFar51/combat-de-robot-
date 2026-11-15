@@ -45,12 +45,12 @@ function buildArena(){
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
  for(const x of [-halfWidth,halfWidth]){
   for(const z of [-5.11,5.11])add(new THREE.BoxGeometry(.3,.65,7.78),M.black,world,x,.12,z);
-  // Prolongement de terrain doublé en profondeur ; l'ouverture reste strictement à 2.44.
-  const extensionDepth=4.88,extensionCenter=x+(x>0?extensionDepth/2:-extensionDepth/2);
-  add(new THREE.BoxGeometry(extensionDepth,.45,2.44),M.floor,world,extensionCenter,-.28,0);
-  // Délimitations noires sur le périmètre extérieur du prolongement.
-  for(const z of [-1.37,1.37])add(new THREE.BoxGeometry(extensionDepth,.65,.3),M.black,world,extensionCenter,.12,z);
-  add(new THREE.BoxGeometry(.3,.65,2.74),M.black,world,x+(x>0?extensionDepth:-extensionDepth),.12,0);
+  // Cage de hockey : 4.88 unités de largeur et 3 unités de profondeur.
+  const goalWidth=4.88,extensionDepth=3,extensionCenter=x+(x>0?extensionDepth/2:-extensionDepth/2);
+  add(new THREE.BoxGeometry(extensionDepth,.45,goalWidth),M.floor,world,extensionCenter,-.28,0);
+  // Délimitations noires sur le périmètre extérieur : poteaux latéraux et fond.
+  for(const z of [-(goalWidth/2+.15),goalWidth/2+.15])add(new THREE.BoxGeometry(extensionDepth,.65,.3),M.black,world,extensionCenter,.12,z);
+  add(new THREE.BoxGeometry(.3,.65,goalWidth+.3),M.black,world,x+(x>0?extensionDepth:-extensionDepth),.12,0);
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -278,7 +278,7 @@ function updatePuck(dt){
   }
   // Le palet (rayon 0,43) doit être entièrement derrière la ligne de but x = +/-16.
   // L'ouverture utile est réduite de son rayon pour éviter qu'un palet touche un poteau.
-  const insideGoal=Math.abs(puck.position.z)<1.22;
+  const insideGoal=Math.abs(puck.position.z)<(2.44-.344);
   if(insideGoal&&puck.position.x>14.744){scoreGoal('blue');return}
   if(insideGoal&&puck.position.x< -14.744){scoreGoal('red');return}
   // Hors de l'ouverture, les bandes latérales bloquent le palet.
