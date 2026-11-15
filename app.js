@@ -43,14 +43,16 @@ function buildArena(){
  }
  // Patinoire rectangulaire : les cages sont placées à gauche et à droite.
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
+ const goalWidth=4.88,extensionDepth=3,postThickness=.3;
  for(const x of [-halfWidth,halfWidth]){
-  for(const z of [-5.11,5.11])add(new THREE.BoxGeometry(.3,.65,7.78),M.black,world,x,.12,z);
-  // Cage de hockey : 4.88 unités de largeur et 3 unités de profondeur.
-  const goalWidth=4.88,extensionDepth=3,extensionCenter=x+(x>0?extensionDepth/2:-extensionDepth/2);
+  // Les bandes s'arrêtent exactement au bord de l'ouverture de 4.88 unités.
+  const sideLength=halfDepth-goalWidth/2,sideCenter=goalWidth/2+sideLength/2;
+  for(const z of [-sideCenter,sideCenter])add(new THREE.BoxGeometry(.3,.65,sideLength),M.black,world,x,.12,z);
+  const extensionCenter=x+(x>0?extensionDepth/2:-extensionDepth/2);
   add(new THREE.BoxGeometry(extensionDepth,.45,goalWidth),M.floor,world,extensionCenter,-.28,0);
-  // Délimitations noires sur le périmètre extérieur : poteaux latéraux et fond.
-  for(const z of [-(goalWidth/2+.15),goalWidth/2+.15])add(new THREE.BoxGeometry(extensionDepth,.65,.3),M.black,world,extensionCenter,.12,z);
-  add(new THREE.BoxGeometry(.3,.65,goalWidth+.3),M.black,world,x+(x>0?extensionDepth:-extensionDepth),.12,0);
+  // Poteaux latéraux et fond de cage, alignés avec les bandes de la patinoire.
+  for(const z of [-(goalWidth/2+postThickness/2),goalWidth/2+postThickness/2])add(new THREE.BoxGeometry(extensionDepth,.65,postThickness),M.black,world,extensionCenter,.12,z);
+  add(new THREE.BoxGeometry(postThickness,.65,goalWidth+postThickness),M.black,world,x+(x>0?extensionDepth:-extensionDepth),.12,0);
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -158,7 +160,7 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<1.22;const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-19.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?19.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
+ const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<(4.88/2-1.15);const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-19.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?19.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
@@ -221,44 +223,32 @@ function updatePuck(dt){
  // Palet en PLA sur terrain plastique : faible frottement, légère résistance à l'air.
  // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
-  const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
-  const robotBottom=-.30,robotTop=.52,puckHalfThickness=.072;if(puck.position.y-puckHalfThickness>robotTop||puck.position.y+puckHalfThickness<robotBottom)return;
-  const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
-  let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
-  let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
-  // Vitesse du robot dans son propre repère : il pousse réellement le palet en avançant.
-  const botVx=cs*(Math.sin(b.root.rotation.y)*b.v)-sn*(Math.cos(b.root.rotation.y)*b.v);
-  const botVz=sn*(Math.sin(b.root.rotation.y)*b.v)+cs*(Math.cos(b.root.rotation.y)*b.v);
-  let collided=false;
-  const bounce=(nx,nz)=>{
-   const relativeNormal=(vx-botVx)*nx+(vz-botVz)*nz;
-   // Contact plastique/plastique : rebond modéré, transfert d'énergie depuis le robot.
-   if(relativeNormal<0){const impulse=1.12*relativeNormal;vx-=impulse*nx;vz-=impulse*nz}
-  };
-  const rect=(cx,cz,hx,hz)=>{
-   const qx=clamp(x,cx-hx,cx+hx),qz=clamp(z,cz-hz,cz+hz);
-   let ox=x-qx,oz=z-qz,d2=ox*ox+oz*oz;
-   if(d2>=radius*radius)return;
+  // Collision 3D sur les volumes réels du modèle : châssis, roues et fourches.
+  const puckHalfThickness=.072,puckBottom=puck.position.y-puckHalfThickness,puckTop=puck.position.y+puckHalfThickness;
+  const parts=robotHitboxes(b);
+  let vx=puck.userData.vx,vz=puck.userData.vz,collided=false;
+  const botVx=Math.sin(b.root.rotation.y)*b.v+(b.slideX||0);
+  const botVz=Math.cos(b.root.rotation.y)*b.v+(b.slideZ||0);
+  for(const part of parts){
+   const box=part.box;
+   if(box.max.y<puckBottom||box.min.y>puckTop)continue;
+   const qx=clamp(puck.position.x,box.min.x,box.max.x),qz=clamp(puck.position.z,box.min.z,box.max.z);
+   const ox=puck.position.x-qx,oz=puck.position.z-qz,d2=ox*ox+oz*oz;
+   if(d2>=radius*radius)continue;
    let nx,nz,depth;
    if(d2>.000001){const d=Math.sqrt(d2);nx=ox/d;nz=oz/d;depth=radius-d}
-   else{const px=hx-Math.abs(x-cx),pz=hz-Math.abs(z-cz);if(px<pz){nx=x<cx?-1:1;nz=0;depth=radius+px}else{nx=0;nz=z<cz?-1:1;depth=radius+pz}}
-   x+=nx*(depth+.003);z+=nz*(depth+.003);
-   bounce(nx,nz);collided=true;
-  };
-  // Coque et deux longerons : le palet peut entrer entre les fourches.
-  rect(0,0,1.025,.45);
-  for(const side of [-1,1]){
-   const wx=x-side*1.03,wz=z,d=Math.hypot(wx,wz),sum=radius+.32;
-   if(d<sum){const nx=d>.0001?wx/d:side,nz=d>.0001?wz/d:0,depth=sum-d;x+=nx*(depth+.003);z+=nz*(depth+.003);bounce(nx,nz);collided=true}
-   rect(side*.72,1.214,.136,.764);
+   else{
+    const px=Math.min(puck.position.x-box.min.x,box.max.x-puck.position.x);
+    const pz=Math.min(puck.position.z-box.min.z,box.max.z-puck.position.z);
+    if(px<pz){nx=puck.position.x<(box.min.x+box.max.x)/2?-1:1;nz=0;depth=radius+px}
+    else{nx=0;nz=puck.position.z<(box.min.z+box.max.z)/2?-1:1;depth=radius+pz}
+   }
+   puck.position.x+=nx*(depth+.003);puck.position.z+=nz*(depth+.003);
+   const relativeNormal=(vx-botVx)*nx+(vz-botVz)*nz;
+   if(relativeNormal<0){const impulse=1.12*relativeNormal;vx-=impulse*nx;vz-=impulse*nz}
+   collided=true;
   }
-  if(collided){
-   puck.position.x=b.root.position.x+cs*x+sn*z;
-   puck.position.z=b.root.position.z-sn*x+cs*z;
-   puck.userData.vx=cs*vx+sn*vz;
-   puck.userData.vz=-sn*vx+cs*vz;
-   b.puckTouchCooldown=.08;
-  }
+  if(collided){puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08}
  };
  // Sous-pas 3D : suivre aussi le déplacement vertical pour éviter que le palet traverse la hitbox entre deux frames.
  const horizontalTravel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
