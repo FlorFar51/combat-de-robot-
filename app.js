@@ -296,7 +296,7 @@ function collidePuckWithRobot(b){
    collided=true;
   }
   if(collided){
-   if(testMode&&b===enemy){b.slideX=(b.slideX||0)-(vx-puck.userData.vx)*.42;b.slideZ=(b.slideZ||0)-(vz-puck.userData.vz)*.42}
+   if(testMode&&b===enemy){b.slideX=(b.slideX||0)+(puck.userData.vx-vx)*.42;b.slideZ=(b.slideZ||0)+(puck.userData.vz-vz)*.42}
    puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08
   }
 }
