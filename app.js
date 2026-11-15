@@ -81,6 +81,7 @@ const physicsLab=(()=>{
   const axis3=pad?.axes?.[throttleAxis]??1;
   const gamepadThrottle=Math.max(0,Math.min(1,axis3*controllerMap.throttle.invert));
   const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
+  const axis3Direction=pad?-1:1;
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
@@ -103,7 +104,7 @@ const physicsLab=(()=>{
     const vSide=pointVelocity.x*wheelSide.x+pointVelocity.y*wheelSide.y+pointVelocity.z*wheelSide.z;
     const normalLoad=body.mass()*9.81/2;
     const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
-    const desired=(throttle*settings.power*7.5-vForward*(brake?8:2.2));
+    const desired=(throttle*settings.power*7.5*axis3Direction-vForward*(brake?8:2.2));
     const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;
     const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);
     body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
@@ -113,14 +114,14 @@ const physicsLab=(()=>{
    // Secours moteur direct si les raycasts de roues ne detectent aucun contact.
    if(throttle>0&&grounded===0){
     const fallback=throttle*settings.power*body.mass()*8;
-    body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
+    body.addForce(V(fwd.x*fallback*axis3Direction,fwd.y*fallback*axis3Direction,fwd.z*fallback*axis3Direction),true);
     appliedMotor=fallback;
    }
    if(++inputDebugFrames%12===0){
     const msg=document.querySelector('#physics-message');
     if(msg){
      const mass=Number(body.mass())||0,pos=body.translation(),vel=body.linvel();
-     msg.textContent='LABO DIAG v75 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
+     msg.textContent='LABO DIAG v77 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
     }
    }
   // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
