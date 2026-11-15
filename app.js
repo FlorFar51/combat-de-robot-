@@ -87,7 +87,7 @@ const physicsLab=(()=>{
    if(throttle>.01)lastLabAction='Propulsion active · '+Math.round(throttle*100)+' %';
    else if(Math.abs(steer||0)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
    else if(brake)lastLabAction='Frein actif';
-  const axis3Direction=gamepadThrottle>.14?-1:1;
+
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
@@ -110,7 +110,7 @@ const physicsLab=(()=>{
     const vSide=pointVelocity.x*wheelSide.x+pointVelocity.y*wheelSide.y+pointVelocity.z*wheelSide.z;
     const normalLoad=body.mass()*9.81/2;
     const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
-    const desired=(throttle*settings.power*7.5*axis3Direction-vForward*(brake?8:2.2));
+    const desired=(throttle*settings.power*7.5-vForward*(brake?8:2.2));
     const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;
     const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);
     body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
@@ -120,7 +120,7 @@ const physicsLab=(()=>{
    // Secours moteur direct si les raycasts de roues ne detectent aucun contact.
    if(throttle>0&&grounded===0){
     const fallback=throttle*settings.power*body.mass()*8;
-    body.addForce(V(fwd.x*fallback*axis3Direction,fwd.y*fallback*axis3Direction,fwd.z*fallback*axis3Direction),true);
+    body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
     appliedMotor=fallback;
    }
    if(++inputDebugFrames%12===0){
