@@ -98,7 +98,7 @@ const physicsLab=(()=>{
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
   const lv=body.linvel();
   // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
-  let grounded=0,rayHits=0,appliedMotor=0,firstRay='—';
+  let grounded=0,rayHits=0,appliedMotor=0,leftMotor=0,rightMotor=0,leftLateral=0,rightLateral=0,firstRay='—';
   for(const w of wheels){
    const origin=localToWorld(w.x,-.20,0),down=V(0,-1,0);
    const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.5,true,undefined,undefined,undefined,body);
@@ -113,8 +113,8 @@ const physicsLab=(()=>{
     const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
     const differential=steer*settings.turn*1.6*(w.x<0?1:-1);
     const desired=(throttle*settings.power*7.5+differential-vForward*(brake?8:2.2));
-    const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;
-    const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);
+    const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;if(w.x<0)leftMotor=motor;else rightMotor=motor;
+    const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);if(w.x<0)leftLateral=lateral;else rightLateral=lateral;
     body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
@@ -129,7 +129,7 @@ const physicsLab=(()=>{
     const msg=document.querySelector('#physics-message');
     if(msg){
      const mass=Number(body.mass())||0,pos=body.translation(),vel=body.linvel();
-     msg.textContent='LABO DIAG v82 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
+     const ang=body.angvel();msg.textContent='LABO DIAG v83 · Entrée '+Math.round(throttle*100)+' % · Direction '+Number(steer||0).toFixed(2)+' · Moteurs G/D '+leftMotor.toFixed(1)+'/'+rightMotor.toFixed(1)+' N · Latéraux G/D '+leftLateral.toFixed(1)+'/'+rightLateral.toFixed(1)+' N · Force totale '+Number(appliedMotor||0).toFixed(1)+' N · Rotation Y '+Number(ang.y||0).toFixed(2)+' rad/s · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
     }
    }
   // La direction est produite uniquement par le différentiel des roues, sans couple direct sur le châssis.
