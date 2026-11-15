@@ -16,8 +16,8 @@ try {
 }
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
-const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
-const controllerMap={throttle:{axis:2,invert:1},steering:{axis:0,invert:1},saw:{button:0}};
+const DEFAULT_BINDINGS={forward:'KeyW',left:'KeyA',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
+const controllerMap={throttle:{axis:1,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.1,puckBounce=10;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,lastPing:0,ping:null,hz:60,guestStates:[]};
@@ -47,7 +47,7 @@ const physicsLab=(()=>{
    world=new RAPIER.World(V(0,-9.81,0));world.timestep=fixedDt;
    const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.2,0));
    world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.9).setRestitution(.08),floorBody);
-   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,1.05,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(.35));
+   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(.35));
    body.setAdditionalMass(3.2,true);
    world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setFriction(.75).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
@@ -73,7 +73,7 @@ const physicsLab=(()=>{
  }
  function localToWorld(x,y,z){const q=body.rotation();const p=body.translation();const v=new RAPIER.Vector3(x,y,z);const r=q;const xx=v.x,yy=v.y,zz=v.z;v.x=(1-2*(r.y*r.y+r.z*r.z))*xx+2*(r.x*r.y-r.z*r.w)*yy+2*(r.x*r.z+r.y*r.w)*zz;v.y=2*(r.x*r.y+r.z*r.w)*xx+(1-2*(r.x*r.x+r.z*r.z))*yy+2*(r.y*r.z-r.x*r.w)*zz;v.z=2*(r.x*r.z-r.y*r.w)*xx+2*(r.y*r.z+r.x*r.w)*yy+(1-2*(r.x*r.x+r.y*r.y))*zz;return V(p.x+v.x,p.y+v.y,p.z+v.z)}
  function drive(){
-  const forward=keys.has('KeyZ')||keys.has('ArrowUp'),left=keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),brake=keys.has('Space');
+  const forward=keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'),left=keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),brake=keys.has('Space');
   const throttle=forward?1:0,steer=(right?1:0)-(left?1:0);
   const rot=body.rotation(),p=body.translation();
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
@@ -82,7 +82,7 @@ const physicsLab=(()=>{
   let grounded=0;
   for(const w of wheels){
    const origin=localToWorld(w.x,-.1,0),down=V(0,-1,0);
-   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.34,true,undefined,undefined,undefined,body);
+   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.48,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
     grounded++;
     const point=V(origin.x,origin.y-hit.toi,origin.z);
@@ -128,7 +128,7 @@ const physicsLab=(()=>{
   }
  }
  function resize(){if(!renderer||!camera)return;const r=canvas.getBoundingClientRect();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);camera.aspect=Math.max(1,r.width)/Math.max(1,r.height);camera.updateProjectionMatrix()}
- window.addEventListener('keydown',e=>{if(['KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,1.05,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
+ window.addEventListener('keydown',e=>{if(['KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
  window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
  for(const [id,key] of [['physics-power','power'],['physics-turn','turn'],['physics-grip','grip']]){
   const input=document.getElementById(id),output=document.getElementById(id+'-value');
@@ -426,7 +426,7 @@ function collidePuckWithRobot(b){
    if(px<pz){nx=lx<0?-1:1;nz=0;depth=radius+px}
    else{nx=0;nz=lz<0?-1:1;depth=radius+pz}
   }
-  if(!best||depth>best.depth)best={nx,nz,depth};
+  if(!best||depth>best.depth)best={nx:nx*c+nz*s,nz:-nx*s+nz*c,depth};
  }
  // Roues : petits contacts circulaires, utiles lorsque le palet arrive de côté.
  for(const wx of [-1.03,1.03]){
@@ -438,8 +438,8 @@ function collidePuckWithRobot(b){
  }
  if(!best)return;
  // Une seule résolution par frame : évite les expulsions successives entre plusieurs hitboxes.
- puck.position.x+=best.nx*(best.depth+.002);
- puck.position.z+=best.nz*(best.depth+.002);
+ const correction=Math.min(best.depth+.002,.28);
+ puck.position.x+=best.nx*correction;puck.position.z+=best.nz*correction;
  const relativeNormal=(u.vx-botVx)*best.nx+(u.vz-botVz)*best.nz;
  const beforeVx=u.vx,beforeVz=u.vz;
  if(relativeNormal<0){
@@ -639,7 +639,7 @@ $('#leave-online').addEventListener('click',()=>{wsSend('leave');if(net.ws)net.w
 try{const savedHz=localStorage.getItem('robotArenaNetworkHz');$('#network-rate').value=savedHz==='30'?'30':'60';net.hz=Number($('#network-rate').value);$('#network-rate').addEventListener('change',()=>{net.hz=Number($('#network-rate').value)===30?30:60;localStorage.setItem('robotArenaNetworkHz',String(net.hz))});const params=new URLSearchParams(location.search);$('#server-url').value=params.get('server')||localStorage.getItem('robotArenaServerUrl')||'';if(params.get('room')){$('#join-room').value=params.get('room');$('#online-state').textContent='Invitation reçue · saisis le mot de passe'}}catch{}
 
 document.querySelectorAll('.mode-card').forEach(c=>c.addEventListener('click',()=>setMode(c.dataset.mode)));setMode('combat');
-function keyLabel(code){if(code==='Space')return 'ESPACE';if(code.startsWith('Key'))return code.slice(3);if(code.startsWith('Digit'))return code.slice(5);return code}
+function keyLabel(code){if(code==='Space')return 'ESPACE';const azerty={KeyW:'Z',KeyA:'Q',KeyD:'D',KeyE:'E'};if(azerty[code])return azerty[code];if(code.startsWith('Key'))return code.slice(3);if(code.startsWith('Digit'))return code.slice(5);return code}
 function renderBindings(){document.querySelectorAll('[data-bind]').forEach(b=>b.textContent=keyLabel(bindings[b.dataset.bind]))}
 function openControls(){$('.menu-content').classList.add('hidden');$('#controls-panel').classList.remove('hidden');renderBindings();scanGamepads();$('#invert-throttle').checked=invertThrottle;$('#invert-steering').checked=invertSteering}
 function closeControls(){$('#controls-panel').classList.add('hidden');$('.menu-content').classList.remove('hidden')}
@@ -655,7 +655,7 @@ function scanGamepads(){const pads=navigator.getGamepads?navigator.getGamepads()
 addEventListener('gamepadconnected',scanGamepads);addEventListener('gamepaddisconnected',()=>{activeGamepad=null;scanGamepads()});
 document.querySelectorAll('[data-assign]').forEach(b=>b.addEventListener('click',()=>{if(assigning)assigning.classList.remove('waiting');assigning=b;b.classList.add('waiting');$('#assign-hint').textContent=b.dataset.assign==='saw'?'Appuie sur le bouton que tu veux affecter à la scie.':'Déplace uniquement le stick ou l’axe souhaité jusqu’en butée.';b.textContent='EN ATTENTE…'}));
 function readController(){const pads=navigator.getGamepads?navigator.getGamepads():[];const p=activeGamepad&&pads[activeGamepad.index]?.connected?pads[activeGamepad.index]:[...pads].find(x=>x&&x.connected);if(!p){activeGamepad=null;$('#throttle-meter').style.width='0%';$('#throttle-meter').style.left='0%';$('#throttle-meter').style.transform='none';$('#steering-meter').style.width='0%';$('#throttle-value').textContent='0%';$('#steering-value').textContent='0%';$('#saw-indicator').textContent=sawEnabled?'ACTIVÉE':'ARRÊTÉE';$('#saw-indicator').classList.toggle('active',sawEnabled);return}activeGamepad=p;const axes=p.axes||[],buttons=p.buttons||[];
- if(assigning){if(assigning.dataset.assign==='saw'){const i=buttons.findIndex(x=>x&&x.pressed);if(i>=0){controllerMap.saw.button=i;assigning.textContent='BOUTON '+(i+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Bouton affecté. Teste-le en appuyant dessus.'}}else{let best=-1,bestVal=.55;for(let i=0;i<axes.length;i++){const v=Math.abs(axes[i]||0);if(v>bestVal){best=i;bestVal=v}}if(best>=0){const kind=assigning.dataset.assign;controllerMap[kind]={axis:best,invert:(axes[best]||0)<0?1:-1};assigning.textContent='AXE '+(best+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Axe affecté. Déplace-le pour vérifier la réponse en direct.'}}}
+ if(assigning){if(assigning.dataset.assign==='saw'){const i=buttons.findIndex(x=>x&&x.pressed);if(i>=0){controllerMap.saw.button=i;assigning.textContent='BOUTON '+(i+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Bouton affecté. Teste-le en appuyant dessus.'}}else{let best=-1,bestVal=.55;for(let i=0;i<axes.length;i++){const v=Math.abs(axes[i]||0);if(v>bestVal){best=i;bestVal=v}}if(best>=0){const kind=assigning.dataset.assign;controllerMap[kind]={axis:best,invert:kind==='throttle'?-Math.sign(axes[best]||1):Math.sign(axes[best]||1)};assigning.textContent='AXE '+(best+1);assigning.classList.remove('waiting');assigning=null;$('#assign-hint').textContent='Axe affecté. Déplace-le pour vérifier la réponse en direct.'}}}
  const t=controllerMap.throttle,s=controllerMap.steering;let rawThrottle=t.axis<axes.length?(axes[t.axis]||0)*t.invert:0,throttle=invertThrottle?Math.max(0,-rawThrottle):Math.max(0,rawThrottle),steering=s.axis<axes.length?(axes[s.axis]||0)*s.invert:0;steering*=invertSteering?-1:1;throttle=Math.abs(throttle)<.12?0:throttle;steering=Math.abs(steering)<.12?0:steering;
  const sawIndex=controllerMap.saw.button,sawPressed=!!buttons[sawIndex]?.pressed;if(ended&&!$('#controls-panel').classList.contains('hidden')&&sawPressed&&!lastControllerSaw)sawEnabled=!sawEnabled;lastControllerSaw=sawPressed;
  $('#throttle-meter').style.width=throttle*100+'%';$('#throttle-meter').style.left='0%';$('#throttle-meter').style.transform='none';$('#steering-meter').style.width=Math.abs(steering)*50+'%';$('#steering-meter').style.left='50%';$('#steering-meter').style.transform='translateX('+(steering<0?'-100%':'0')+')';$('#throttle-value').textContent=Math.round(throttle*100)+'%';$('#steering-value').textContent=Math.round(steering*100)+'%';
