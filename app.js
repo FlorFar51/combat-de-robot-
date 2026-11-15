@@ -174,18 +174,40 @@ function collideBots(a,b,dt){
  const rx=(b.prevX??b.root.position.x)-(a.prevX??a.root.position.x),rz=(b.prevZ??b.root.position.z)-(a.prevZ??a.root.position.z);
  const travel2=sx*sx+sz*sz,t=travel2>.0001?clamp(-(rx*sx+rz*sz)/travel2,0,1):0;
  const closest=Math.hypot(rx+sx*t,rz+sz*t),minDistance=mode==='hockey'?2.65:mode==='combat'?2.35:2.1;
- const hockeyHalf=1.22;const touching=mode==='hockey'?(Math.abs(dx)<hockeyHalf*2&&Math.abs(dz)<hockeyHalf*2):(d<minDistance||closest<minDistance);
+ let touching=false,nx=0,nz=0,overlap=0;
+ if(mode==='hockey'){
+  // OBB fidèle au contour extérieur du modèle : roues + châssis + fourches.
+  const halfW=1.15,halfL=1.214,centerForward=.764;
+  const makeRect=bot=>{const r=bot.root.rotation.y,c=Math.cos(r),s=Math.sin(r);return{cx:bot.root.position.x+s*centerForward,cz:bot.root.position.z+c*centerForward,ux:c,uz:-s,vx:s,vz:c}};
+  const A=makeRect(a),B=makeRect(b),ddx=B.cx-A.cx,ddz=B.cz-A.cz;
+  let best=Infinity,bestX=1,bestZ=0;
+  const axes=[[A.ux,A.uz],[A.vx,A.vz],[B.ux,B.uz],[B.vx,B.vz]];
+  for(const [ax,az] of axes){
+   const ra=halfW*Math.abs(ax*A.ux+az*A.uz)+halfL*Math.abs(ax*A.vx+az*A.vz);
+   const rb=halfW*Math.abs(ax*B.ux+az*B.uz)+halfL*Math.abs(ax*B.vx+az*B.vz);
+   const signed=ddx*ax+ddz*az,ov=ra+rb-Math.abs(signed);
+   if(ov<=0){best=-1;break}
+   if(ov<best){best=ov;bestX=ax*(signed<0?-1:1);bestZ=az*(signed<0?-1:1)}
+  }
+  if(best>0){touching=true;nx=bestX;nz=bestZ;overlap=best}
+ }else touching=d<minDistance||closest<minDistance;
  if(touching){
-  let nx,nz;
-  if(mode==='hockey'){if(hockeyHalf*2-Math.abs(dx)<hockeyHalf*2-Math.abs(dz)){nx=Math.sign(dx)||1;nz=0}else{nx=0;nz=Math.sign(dz)||1}}
-  else{nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0}
+  if(mode!=='hockey'){
+   nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;
+   nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0;
+  }
   const avx=Math.sin(a.root.rotation.y)*a.v,avz=Math.cos(a.root.rotation.y)*a.v,bvx=Math.sin(b.root.rotation.y)*b.v,bvz=Math.cos(b.root.rotation.y)*b.v;
   const closing=(bvx-avx)*nx+(bvz-avz)*nz;
   if(mode==='hockey'){
-   const overlap=Math.min(hockeyHalf*2-Math.abs(dx),hockeyHalf*2-Math.abs(dz)),separation=Math.max(0,overlap)*.5+.012;
+   const separation=overlap*.5+.012;
    a.root.position.x-=nx*separation;b.root.position.x+=nx*separation;a.root.position.z-=nz*separation;b.root.position.z+=nz*separation;
-   if(closing<-.6){const impactSpeed=-closing,push=clamp((impactSpeed-.6)*.045,0,.42);a.root.position.x-=nx*push*.5;b.root.position.x+=nx*push*.5;a.root.position.z-=nz*push*.5;b.root.position.z+=nz*push*.5;const loss=clamp(impactSpeed*.012,0,.16);a.v=Math.max(0,a.v*(1-loss));b.v=Math.max(0,b.v*(1-loss))}
-  }else if(d<minDistance){const overlap=minDistance-d+.025;a.root.position.x-=nx*overlap*.5;b.root.position.x+=nx*overlap*.5;a.root.position.z-=nz*overlap*.5;b.root.position.z+=nz*overlap*.5}
+   if(closing<-.6){
+    const impactSpeed=-closing,push=clamp((impactSpeed-.6)*.045,0,.42);
+    a.root.position.x-=nx*push*.5;b.root.position.x+=nx*push*.5;
+    a.root.position.z-=nz*push*.5;b.root.position.z+=nz*push*.5;
+    const loss=clamp(impactSpeed*.012,0,.16);a.v=Math.max(0,a.v*(1-loss));b.v=Math.max(0,b.v*(1-loss));
+   }
+  }else if(d<minDistance){const penetration=minDistance-d+.025;a.root.position.x-=nx*penetration*.5;b.root.position.x+=nx*penetration*.5;a.root.position.z-=nz*penetration*.5;b.root.position.z+=nz*penetration*.5}
   else if(closest<minDistance){const midX=(a.root.position.x+b.root.position.x)*.5,midZ=(a.root.position.z+b.root.position.z)*.5;a.root.position.x=midX-nx*(minDistance*.51);b.root.position.x=midX+nx*(minDistance*.51);a.root.position.z=midZ-nz*(minDistance*.51);b.root.position.z=midZ+nz*(minDistance*.51)}
   if(closing<0){const impact=Math.min(1,Math.abs(closing)/8);if(mode!=='sumo'){a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact))}}
   if((a.contactCooldown<=0||b.contactCooldown<=0)&&Math.abs(closing)>1.2){if(closing< -1.2)a.contacts=(a.contacts||0)+1;else if(closing>1.2)b.contacts=(b.contacts||0)+1;a.contactCooldown=b.contactCooldown=.45}
@@ -200,7 +222,7 @@ function updatePuck(dt){
  // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
   const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
-  const robotBottom=-.42,robotTop=.27;if(puck.position.y-.344>robotTop||puck.position.y+.344<robotBottom)return;
+  const robotBottom=-.42,robotTop=.29,puckHalfThickness=.072;if(puck.position.y-puckHalfThickness>robotTop||puck.position.y+puckHalfThickness<robotBottom)return;
   const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
   let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
   let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
