@@ -110,7 +110,19 @@ const physicsLab=(()=>{
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
   }
-   // Secours moteur direct si les raycasts de roues ne détectent aucun contact.\n   if(throttle>0&&grounded===0){const fallback=throttle*settings.power*body.mass()*8;body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);appliedMotor=fallback;}\n   if(++inputDebugFrames%12===0){const msg=document.querySelector('#physics-message');if(msg)msg.textContent='LABO DIAG v75 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+axis3.toFixed(2)+' · Force moteur '+appliedMotor.toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+body.mass().toFixed(1)+' kg · Y '+body.translation().y.toFixed(2)+' m · Vitesse '+Math.hypot(body.linvel().x,body.linvel().z).toFixed(2)+' m/s';}
+   // Secours moteur direct si les raycasts de roues ne detectent aucun contact.
+   if(throttle>0&&grounded===0){
+    const fallback=throttle*settings.power*body.mass()*8;
+    body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
+    appliedMotor=fallback;
+   }
+   if(++inputDebugFrames%12===0){
+    const msg=document.querySelector('#physics-message');
+    if(msg){
+     const mass=Number(body.mass())||0,pos=body.translation(),vel=body.linvel();
+     msg.textContent='LABO DIAG v75 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
+    }
+   }
   // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
   if(grounded>0&&Math.abs(steer)>.01){
    const yawTorque=steer*settings.turn*body.mass()*3.2;
