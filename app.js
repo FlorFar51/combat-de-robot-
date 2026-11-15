@@ -245,25 +245,25 @@ function collideBots(a,b,dt){
    nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0;
   }
   const avx=Math.sin(a.root.rotation.y)*a.v,avz=Math.cos(a.root.rotation.y)*a.v,bvx=Math.sin(b.root.rotation.y)*b.v,bvz=Math.cos(b.root.rotation.y)*b.v;
-  const closing=(bvx-avx)*nx+(bvz-avz)*nz;
-  if(testMode&&closing<-.05){
-   const impulse=clamp(-closing*.62,0,5);
+  const relativeSpeed=(bvx-avx)*nx+(bvz-avz)*nz;
+  if(testMode&&relativeSpeed<-.05){
+   const impulse=clamp(-relativeSpeed*.62,0,5);
    if(a===player&&b===enemy){b.slideX=(b.slideX||0)+nx*impulse;b.slideZ=(b.slideZ||0)+nz*impulse}
    else if(b===player&&a===enemy){a.slideX=(a.slideX||0)-nx*impulse;a.slideZ=(a.slideZ||0)-nz*impulse}
   }
   if(mode==='hockey'){
    const separation=overlap*.5+.012;
    a.root.position.x-=nx*separation;b.root.position.x+=nx*separation;a.root.position.z-=nz*separation;b.root.position.z+=nz*separation;
-   if(closing<-.6){
-    const impactSpeed=-closing,push=clamp((impactSpeed-.6)*.045,0,.42);
+   if(relativeSpeed<-.6){
+    const impactSpeed=-relativeSpeed,push=clamp((impactSpeed-.6)*.045,0,.42);
     a.root.position.x-=nx*push*.5;b.root.position.x+=nx*push*.5;
     a.root.position.z-=nz*push*.5;b.root.position.z+=nz*push*.5;
     const loss=clamp(impactSpeed*.012,0,.16);a.v=Math.max(0,a.v*(1-loss));b.v=Math.max(0,b.v*(1-loss));
    }
   }else if(d<minDistance){const penetration=minDistance-d+.025;a.root.position.x-=nx*penetration*.5;b.root.position.x+=nx*penetration*.5;a.root.position.z-=nz*penetration*.5;b.root.position.z+=nz*penetration*.5}
   else if(closest<minDistance){const midX=(a.root.position.x+b.root.position.x)*.5,midZ=(a.root.position.z+b.root.position.z)*.5;a.root.position.x=midX-nx*(minDistance*.51);b.root.position.x=midX+nx*(minDistance*.51);a.root.position.z=midZ-nz*(minDistance*.51);b.root.position.z=midZ+nz*(minDistance*.51)}
-  if(closing<0){const impact=Math.min(1,Math.abs(closing)/8);if(mode!=='sumo'){a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact))}}
-  if((a.contactCooldown<=0||b.contactCooldown<=0)&&Math.abs(closing)>1.2){if(closing< -1.2)a.contacts=(a.contacts||0)+1;else if(closing>1.2)b.contacts=(b.contacts||0)+1;a.contactCooldown=b.contactCooldown=.45}
+  if(relativeSpeed<0){const impact=Math.min(1,Math.abs(relativeSpeed)/8);if(mode!=='sumo'){a.v=Math.max(0,a.v*(1-.72*impact));b.v=Math.max(0,b.v*(1-.72*impact))}}
+  if((a.contactCooldown<=0||b.contactCooldown<=0)&&Math.abs(relativeSpeed)>1.2){if(relativeSpeed< -1.2)a.contacts=(a.contacts||0)+1;else if(relativeSpeed>1.2)b.contacts=(b.contacts||0)+1;a.contactCooldown=b.contactCooldown=.45}
   if(mode==='combat'){if(weaponA&&a.cooldown<=0&&(a!==player||sawEnabled||(net.role==='host'&&net.remote.action))){b.hp=Math.max(0,b.hp-rand(8,14));a.cooldown=.35}if(weaponB&&b.cooldown<=0&&(b!==player||sawEnabled||(net.role==='host'&&net.remote.action))){a.hp=Math.max(0,a.hp-rand(8,14));b.cooldown=.35}}
   if(mode==='sumo'){const pushA=Math.max(0,avx*nx+avz*nz),pushB=Math.max(0,-(bvx*nx+bvz*nz));const transfer=(target,normalX,normalZ,amount)=>{const impulse=clamp(amount*.48,0,4),sideX=-Math.cos(target.root.rotation.y),sideZ=Math.sin(target.root.rotation.y),sideSign=Math.sign(normalX*sideX+normalZ*sideZ)||1,side=impulse*.22;target.slideX=(target.slideX||0)+normalX*impulse+sideX*side*sideSign;target.slideZ=(target.slideZ||0)+normalZ*impulse+sideZ*side*sideSign;target.v=Math.max(0,target.v-impulse*.24)};if(pushA>pushB+.10)transfer(b,nx,nz,pushA-pushB);else if(pushB>pushA+.10)transfer(a,-nx,-nz,pushB-pushA)}
  }
