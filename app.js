@@ -27,7 +27,7 @@ const physicsLab=(()=>{
  const canvas=document.querySelector('#physics-canvas'),status=document.querySelector('#physics-state');
  if(!canvas)return null;
  let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false;
- const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();
+ const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0;
  const settings={power:.65,turn:.55,grip:.85,brake:false};
  const mat=(color,metalness=.2,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
  const mats={frame:mat(0x788b9c,.7,.3),top:mat(0x344b5e,.6,.32),rubber:mat(0x101317,.05,.95),fork:mat(0xb9c7d2,.8,.24),ground:mat(0x242a30,.25,.75)};
@@ -86,6 +86,7 @@ const physicsLab=(()=>{
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
   const steer=keyboardSteer||padSteer;
   const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
+  if(++inputDebugFrames%12===0){const msg=document.querySelector('#physics-message');if(msg)msg.textContent='ENTRÉES LABO · Clavier '+(forward?'AVANCE ': '')+(left?'GAUCHE ': '')+(right?'DROITE ':'')+(keyboardBrake?'FREIN ':'')+' · Axe 3 '+axis3.toFixed(2)+' · Consigne '+Math.round(throttle*100)+' % · Direction '+steer.toFixed(2)+' · Vitesse '+Math.hypot(body.linvel().x,body.linvel().z).toFixed(2)+' m/s';}
   const rot=body.rotation(),p=body.translation();
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
   const lv=body.linvel();
@@ -139,8 +140,11 @@ const physicsLab=(()=>{
   }
  }
  function resize(){if(!renderer||!camera)return;const r=canvas.getBoundingClientRect();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);camera.aspect=Math.max(1,r.width)/Math.max(1,r.height);camera.updateProjectionMatrix()}
- window.addEventListener('keydown',e=>{if(['KeyW','KeyA','KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
- window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
+ const labKeys=['KeyW','KeyA','KeyS','KeyZ','KeyQ','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'];
+ // Capture-phase listeners prevent other menu/game handlers from swallowing laboratory input.
+ document.addEventListener('keydown',e=>{if(labKeys.includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}},{capture:true});
+ document.addEventListener('keyup',e=>keys.delete(e.code),{capture:true});
+ window.addEventListener('blur',()=>keys.clear());document.addEventListener('visibilitychange',()=>{if(document.hidden)keys.clear()});
  for(const [id,key] of [['physics-power','power'],['physics-turn','turn'],['physics-grip','grip']]){
   const input=document.getElementById(id),output=document.getElementById(id+'-value');
   input?.addEventListener('input',()=>{settings[key]=Number(input.value)/100;if(output)output.textContent=input.value+' %'});
