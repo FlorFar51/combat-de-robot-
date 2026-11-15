@@ -27,7 +27,9 @@ const physicsLab=(()=>{
  const canvas=document.querySelector('#physics-canvas'),status=document.querySelector('#physics-state');
  if(!canvas)return null;
  let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false;
- const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0;
+ const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune';
+  const inputDiag=()=>document.querySelector('#physics-input-diagnostic');
+  function logLabInput(message){lastLabAction=message;const el=inputDiag();if(el)el.textContent='DERNIÈRE ACTION : '+message;}
  const settings={power:.65,turn:.55,grip:.85,brake:false};
  const mat=(color,metalness=.2,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
  const mats={frame:mat(0x788b9c,.7,.3),top:mat(0x344b5e,.6,.32),rubber:mat(0x101317,.05,.95),fork:mat(0xb9c7d2,.8,.24),ground:mat(0x242a30,.25,.75)};
@@ -79,8 +81,12 @@ const physicsLab=(()=>{
   const pad=pads.find(p=>p&&p.connected);
   const throttleAxis=controllerMap.throttle.axis;
   const axis3=pad?.axes?.[throttleAxis]??1;
+   if(pad){const states=pad.buttons.map((b,i)=>!!b?.pressed);states.forEach((pressed,i)=>{if(pressed&&!lastButtonStates[i])logLabInput('Manette · bouton '+i+' appuyé');if(!pressed&&lastButtonStates[i])logLabInput('Manette · bouton '+i+' relâché')});lastButtonStates=states;const snap=pad.axes.map((v,i)=>'A'+i+'='+Number(v||0).toFixed(2)).join(' · ');if(snap!==lastAxisSnapshot){lastAxisSnapshot=snap;const el=inputDiag();if(el)el.textContent='AXES MANETTE : '+snap+' | '+lastLabAction;}}
   const gamepadThrottle=Math.max(0,Math.min(1,axis3*controllerMap.throttle.invert));
   const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
+   if(throttle>.01)lastLabAction='Propulsion active · '+Math.round(throttle*100)+' %';
+   else if(Math.abs(steer||0)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
+   else if(brake)lastLabAction='Frein actif';
   const axis3Direction=gamepadThrottle>.14?-1:1;
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
@@ -155,12 +161,12 @@ const physicsLab=(()=>{
  function resize(){if(!renderer||!camera)return;const r=canvas.getBoundingClientRect();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);camera.aspect=Math.max(1,r.width)/Math.max(1,r.height);camera.updateProjectionMatrix()}
  const labKeys=['KeyW','KeyA','KeyS','KeyZ','KeyQ','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'];
  // Capture-phase listeners prevent other menu/game handlers from swallowing laboratory input.
- document.addEventListener('keydown',e=>{if(labKeys.includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}},{capture:true});
- document.addEventListener('keyup',e=>keys.delete(e.code),{capture:true});
+ document.addEventListener('keydown',e=>{if(labKeys.includes(e.code)){keys.add(e.code);logLabInput('Clavier · '+e.code+' appuyée');e.preventDefault()}if(e.code==='KeyR'&&body){logLabInput('Clavier · R : remise à plat');body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}},{capture:true});
+ document.addEventListener('keyup',e=>{if(keys.has(e.code))logLabInput('Clavier · '+e.code+' relâchée');keys.delete(e.code)},{capture:true});
  window.addEventListener('blur',()=>keys.clear());document.addEventListener('visibilitychange',()=>{if(document.hidden)keys.clear()});
  for(const [id,key] of [['physics-power','power'],['physics-turn','turn'],['physics-grip','grip']]){
   const input=document.getElementById(id),output=document.getElementById(id+'-value');
-  input?.addEventListener('input',()=>{settings[key]=Number(input.value)/100;if(output)output.textContent=input.value+' %'});
+  input?.addEventListener('input',()=>{settings[key]=Number(input.value)/100;if(output)output.textContent=input.value+' %';logLabInput('Réglage '+key+' : '+input.value+' %')});
  }
  window.addEventListener('resize',resize);if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas.parentElement);
  init().then(()=>resize());
