@@ -53,8 +53,8 @@ const physicsLab=(()=>{
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
-    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.23,.16).setTranslation(x,-.12,0).setFriction(.95).setRestitution(.03),body);
-    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.castShadow=true;robotVisual=null;
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.12,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.95).setRestitution(.03),body);
+    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.12,0);mesh.castShadow=true;
     wheels.push({x,collider:col,mesh,spin:0});
    }
    robotVisual=new THREE.Group();scene.add(robotVisual);
@@ -64,6 +64,8 @@ const physicsLab=(()=>{
    visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.13,-.91]);
    visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.15,.52]);
    visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.15,.52]);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.13,-.91).setFriction(.2).setRestitution(.04),body);
+   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.15,.52).setFriction(.16).setRestitution(.02),body);
    wheels.forEach(w=>robotVisual.add(w.mesh));
    clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 60 HZ';
    requestAnimationFrame(frame);
@@ -80,7 +82,7 @@ const physicsLab=(()=>{
   let grounded=0;
   for(const w of wheels){
    const origin=localToWorld(w.x,-.1,0),down=V(0,-1,0);
-   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.34,true);
+   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.34,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
     grounded++;
     const point=V(origin.x,origin.y-hit.toi,origin.z);
@@ -100,7 +102,7 @@ const physicsLab=(()=>{
   // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
   if(grounded>0&&Math.abs(steer)>.01){
    const yawTorque=steer*settings.turn*body.mass()*3.2;
-   body.addTorque(V(0,yawTorque,0),true);
+   const up=localToWorld(0,1,0);body.addTorque(V(up.x*yawTorque,up.y*yawTorque,up.z*yawTorque),true);
   }
   if(brake){const velocity=body.linvel();body.setLinvel(V(velocity.x*.94,velocity.y,velocity.z*.94),true)}
   // Keep the demo in its test area; this is a soft arena boundary, not a robot movement clamp.
