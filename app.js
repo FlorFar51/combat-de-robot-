@@ -240,16 +240,17 @@ function collideBots(a,b,dt){
   if(best>0){touching=true;nx=bestX;nz=bestZ;overlap=best}
  }else touching=d<minDistance||closest<minDistance;
  if(touching){
-  if(testMode&&Math.abs(closing)>.05){
-   if(a===player&&b===enemy&&closing<0){const impulse=clamp(-closing*.62,0,5);b.slideX=(b.slideX||0)+nx*impulse;b.slideZ=(b.slideZ||0)+nz*impulse}
-   else if(b===player&&a===enemy&&closing>0){const impulse=clamp(closing*.62,0,5);a.slideX=(a.slideX||0)-nx*impulse;a.slideZ=(a.slideZ||0)-nz*impulse}
-  }
   if(mode!=='hockey'){
    nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;
    nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0;
   }
   const avx=Math.sin(a.root.rotation.y)*a.v,avz=Math.cos(a.root.rotation.y)*a.v,bvx=Math.sin(b.root.rotation.y)*b.v,bvz=Math.cos(b.root.rotation.y)*b.v;
   const closing=(bvx-avx)*nx+(bvz-avz)*nz;
+  if(testMode&&closing<-.05){
+   const impulse=clamp(-closing*.62,0,5);
+   if(a===player&&b===enemy){b.slideX=(b.slideX||0)+nx*impulse;b.slideZ=(b.slideZ||0)+nz*impulse}
+   else if(b===player&&a===enemy){a.slideX=(a.slideX||0)-nx*impulse;a.slideZ=(a.slideZ||0)-nz*impulse}
+  }
   if(mode==='hockey'){
    const separation=overlap*.5+.012;
    a.root.position.x-=nx*separation;b.root.position.x+=nx*separation;a.root.position.z-=nz*separation;b.root.position.z+=nz*separation;
