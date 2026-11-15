@@ -44,10 +44,9 @@ function buildArena(){
  // Patinoire rectangulaire : les cages sont placées à gauche et à droite.
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
  for(const x of [-halfWidth,halfWidth]){
-  for(const z of [-5.65,5.65])add(new THREE.BoxGeometry(.3,.65,6.7),M.black,world,x,.12,z);
-  for(const z of [-1.22,1.22])add(new THREE.BoxGeometry(.12,1.25,.12),M.steel,world,x,.57,z);
-  add(new THREE.BoxGeometry(.12,.12,2.44),M.steel,world,x,1.2,0);
-  const net=add(new THREE.BoxGeometry(.9,.9,2.4),mat(0x222222),world,x+(x>0?.5:-.5),.52,0);net.material.transparent=true;net.material.opacity=.5;
+  for(const z of [-5.11,5.11])add(new THREE.BoxGeometry(.3,.65,7.78),M.black,world,x,.12,z);
+  // Prolongement de terrain derrière le but : couloir de 2.44 x 2.44, sans cage.
+  add(new THREE.BoxGeometry(2.44,.45,2.44),M.floor,world,x+(x>0?1.22:-1.22),-.28,0);
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -155,7 +154,7 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<2.805;const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-16.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?16.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
+ const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<1.22;const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-16.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?16.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
@@ -246,7 +245,7 @@ function updatePuck(dt){
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
   if(puckGlide<=0){puck.userData.vx=0;puck.userData.vz=0}
   else if(speed>0){
-   const deceleration=4*(.12+speed*.008)*(1-puckGlide/100);
+   const deceleration=8*(.12+speed*.008)*(1-puckGlide/100);
    const nextSpeed=Math.max(0,speed-deceleration*step);
    const factor=nextSpeed/speed;
    puck.userData.vx*=factor;puck.userData.vz*=factor;
