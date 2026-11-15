@@ -5,14 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#0b1119">
 <title>Robot Arena — Combat de robots</title>
-<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261115-68">
-<link rel="stylesheet" href="./style.css?v=20261115-68">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg?v=20261115-69">
+<link rel="stylesheet" href="./style.css?v=20261115-69">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
 </head>
 <body>
 <main id="game">
   <div id="engine-diagnostic" class="hidden" role="alert" aria-live="assertive"></div>
-  <div id="build-version" aria-label="Version du jeu">V.68</div>
+  <div id="build-version" aria-label="Version du jeu">V.69</div>
   <section id="menu" class="screen">
     <header class="menu-head"><div class="logo"><div>ROBOT ARENA<small>SIMULATEUR DE ROBOTS</small></div></div><button id="controls-tab" class="small-button">COMMANDES</button></header>
     <div class="menu-content">
@@ -24,6 +24,7 @@
       </div>
       <section id="multiplayer-panel" class="multiplayer-panel">
         <div class="online-heading"><div><b>MULTIJOUEUR PRIVÉ</b><small>Deux joueurs · sans compte</small></div><span id="network-status">Hors ligne</span></div>
+        <div class="network-settings"><label class="online-field">FRÉQUENCE RÉSEAU<select id="network-rate"><option value="60" selected>60 Hz · plus fluide</option><option value="30">30 Hz · moins de données</option></select></label><span id="network-ping">PING —</span></div>
         <label class="online-field">ADRESSE DU SERVEUR CLOUDFLARE<input id="server-url" type="url" placeholder="https://xxxx.trycloudflare.com" autocomplete="url"></label>
         <div class="online-actions"><button id="create-lobby" class="online-button">CRÉER UN LOBBY</button></div>
         <div id="invite-area" class="invite-area hidden">
@@ -139,6 +140,6 @@
   }, 7000);
 })();
 </script>
-<script type="module" src="./app.js?v=20261115-68" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
+<script type="module" src="./app.js?v=20261115-69" onerror="window.__showArenaDiagnostic?.('Impossible de charger app.js : vérifie la publication GitHub Pages.', true)"></script>
 </body>
 </html>
