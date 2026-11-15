@@ -30,7 +30,7 @@ const physicsLab=(()=>{
  const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune',perfWindowStart=0,perfFrames=0,perfSteps=0,perfMaxFrame=0;
   const inputDiag=()=>document.querySelector('#physics-input-diagnostic');
   function logLabInput(message){lastLabAction=message;const el=inputDiag();if(el)el.textContent='DERNIÈRE ACTION : '+message;}
- const settings={power:.65,turn:.55,grip:.85,brake:false};
+ const settings={power:1,turn:1,grip:.85,brake:false};
  const mat=(color,metalness=.2,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
  const mats={frame:mat(0x788b9c,.7,.3),top:mat(0x344b5e,.6,.32),rubber:mat(0x101317,.05,.95),fork:mat(0xb9c7d2,.8,.24),ground:mat(0x242a30,.25,.75)};
  const V=(x,y,z)=>new RAPIER.Vector3(x,y,z);
