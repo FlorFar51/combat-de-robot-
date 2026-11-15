@@ -117,9 +117,15 @@ function drive(bot,dt,throttle,steer){
   if(target>bot.v)bot.v=Math.min(target,bot.v+accel*dt);else bot.v=Math.max(target,bot.v-brake*dt);bot.v=clamp(bot.v,0,max);
   const oldAngle=bot.root.rotation.y,pivotX=bot.root.position.x-Math.sin(oldAngle)*.58,pivotZ=bot.root.position.z-Math.cos(oldAngle)*.58;bot.root.rotation.y+=steer*tunedRotation*(.8+Math.min(Math.abs(bot.v)/max,.2))*dt;bot.root.position.x=pivotX+Math.sin(bot.root.rotation.y)*.58;bot.root.position.z=pivotZ+Math.cos(bot.root.rotation.y)*.58;
  }
- bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideX||0)*dt:0);bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt+(mode==='sumo'?(bot.slideZ||0)*dt:0);if(mode==='sumo'){const grip=Math.pow(.72,dt*60);bot.slideX=(bot.slideX||0)*grip;bot.slideZ=(bot.slideZ||0)*grip}
+ bot.root.position.x+=Math.sin(bot.root.rotation.y)*bot.v*dt+(bot.slideX||0)*dt;bot.root.position.z+=Math.cos(bot.root.rotation.y)*bot.v*dt+(bot.slideZ||0)*dt;const grip=Math.pow(mode==='sumo'?.72:.88,dt*60);bot.slideX=(bot.slideX||0)*grip;bot.slideZ=(bot.slideZ||0)*grip
  if(mode==='combat'&&(bot!==player||sawEnabled))bot.weapon.rotation.y+=dt*20;
  bot.cooldown=Math.max(0,bot.cooldown-dt);
+}
+function coastBot(bot,dt){
+ const sx=bot.slideX||0,sz=bot.slideZ||0;
+ bot.root.position.x+=sx*dt;bot.root.position.z+=sz*dt;
+ const drag=Math.exp(-3.4*dt);bot.slideX=sx*drag;bot.slideZ=sz*drag;
+ if(Math.hypot(bot.slideX,bot.slideZ)<.025)bot.slideX=bot.slideZ=0;
 }
 function aim(bot,x,z,aggression=1){const dx=x-bot.root.position.x,dz=z-bot.root.position.z,desired=Math.atan2(dx,dz);let d=((desired-bot.root.rotation.y+Math.PI*3)%(Math.PI*2))-Math.PI;return {throttle:Math.abs(d)>2.5?.15:aggression,steer:clamp(d*3.8,-1,1)}}
 function updateAI(dt){
@@ -234,6 +240,10 @@ function collideBots(a,b,dt){
   if(best>0){touching=true;nx=bestX;nz=bestZ;overlap=best}
  }else touching=d<minDistance||closest<minDistance;
  if(touching){
+  if(testMode&&Math.abs(closing)>.05){
+   if(a===player&&b===enemy&&closing<0){const impulse=clamp(-closing*.62,0,5);b.slideX=(b.slideX||0)+nx*impulse;b.slideZ=(b.slideZ||0)+nz*impulse}
+   else if(b===player&&a===enemy&&closing>0){const impulse=clamp(closing*.62,0,5);a.slideX=(a.slideX||0)-nx*impulse;a.slideZ=(a.slideZ||0)-nz*impulse}
+  }
   if(mode!=='hockey'){
    nx=d>.001?dx/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rx+sx*t)/closest:1;
    nz=d>.001?dz/d:Math.hypot(rx+sx*t,rz+sz*t)>.001?(rz+sz*t)/closest:0;
@@ -285,7 +295,10 @@ function collidePuckWithRobot(b){
    if(relativeNormal<0){const impulse=1.12*relativeNormal;vx-=impulse*nx;vz-=impulse*nz}
    collided=true;
   }
-  if(collided){puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08}
+  if(collided){
+   if(testMode&&b===enemy){b.slideX=(b.slideX||0)-(vx-puck.userData.vx)*.42;b.slideZ=(b.slideZ||0)-(vz-puck.userData.vz)*.42}
+   puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08
+  }
 }
 function updatePuck(dt){
  const radius=.344,u=puck.userData;
@@ -294,26 +307,18 @@ function updatePuck(dt){
  const steps=Math.max(1,Math.ceil(Math.max(horizontalTravel,verticalTravel)/.025));
  const step=dt/steps,goalHalfWidth=2.44,goalLine=16;
  const boardBounce=.05+puckBounce*.009;
- // Collision cercle/AABB avec correction minimale, normale et rebond sur la paroi.
- const hitWall=(minX,maxX,minZ,maxZ)=>{
-  const qx=clamp(puck.position.x,minX,maxX),qz=clamp(puck.position.z,minZ,maxZ);
-  const dx=puck.position.x-qx,dz=puck.position.z-qz,d2=dx*dx+dz*dz;
-  if(d2>=radius*radius)return;
-  let nx,nz,depth;
-  if(d2>1e-10){
-   const d=Math.sqrt(d2);nx=dx/d;nz=dz/d;depth=radius-d;
-  }else{
-   const edges=[
-    {d:puck.position.x-minX,nx:-1,nz:0},
-    {d:maxX-puck.position.x,nx:1,nz:0},
-    {d:puck.position.z-minZ,nx:0,nz:-1},
-    {d:maxZ-puck.position.z,nx:0,nz:1}
-   ].sort((a,b)=>a.d-b.d);
-   nx=edges[0].nx;nz=edges[0].nz;depth=radius+Math.max(0,edges[0].d);
-  }
-  puck.position.x+=nx*(depth+.001);puck.position.z+=nz*(depth+.001);
-  const vn=u.vx*nx+u.vz*nz;
-  if(vn<0){u.vx-=(1+boardBounce)*vn*nx;u.vz-=(1+boardBounce)*vn*nz}
+ // Collision unilatérale contre la face intérieure de chaque bande.
+ // Le palet reste toujours du côté terrain, même poussé fortement par un robot.
+ const hitWall=(axis,face,sign,tangentMin,tangentMax)=>{
+  const tangent=axis==='x'?puck.position.z:puck.position.x;
+  if(tangent<tangentMin-radius||tangent>tangentMax+radius)return;
+  const value=axis==='x'?puck.position.x:puck.position.z;
+  const penetration=sign*(value-face)+radius;
+  if(penetration<=0)return;
+  if(axis==='x')puck.position.x-=sign*(penetration+.001);
+  else puck.position.z-=sign*(penetration+.001);
+  const vn=(axis==='x'?u.vx:u.vz)*sign;
+  if(vn>0){if(axis==='x')u.vx-=(1+boardBounce)*vn*sign;else u.vz-=(1+boardBounce)*vn*sign}
  };
  for(let i=0;i<steps;i++){
   puck.position.x+=u.vx*step;puck.position.z+=u.vz*step;
@@ -326,22 +331,22 @@ function updatePuck(dt){
   const inGoalMouth=Math.abs(puck.position.z)<=goalHalfWidth-radius;
   if(inGoalMouth&&puck.position.x>goalLine){scoreGoal('blue');return}
   if(inGoalMouth&&puck.position.x< -goalLine){scoreGoal('red');return}
-  // Murs latéraux de la patinoire : x = +/-14.4, ouverture centrale libre.
-  hitWall(14.25,14.55,2.44,9);
-  hitWall(14.25,14.55,-9,-2.44);
-  hitWall(-14.55,-14.25,2.44,9);
-  hitWall(-14.55,-14.25,-9,-2.44);
-  // Murs transversaux haut/bas du terrain : z = +/-9.
-  hitWall(-14.4,14.4,8.85,9.15);
-  hitWall(-14.4,14.4,-9.15,-8.85);
-  // Parois hautes/basses des cages, sur toute leur profondeur.
-  hitWall(14.4,17.4,2.44,2.74);
-  hitWall(14.4,17.4,-2.74,-2.44);
-  hitWall(-17.4,-14.4,2.44,2.74);
-  hitWall(-17.4,-14.4,-2.74,-2.44);
+  // Bandes latérales du terrain : ouverture centrale conservée pour les cages.
+  hitWall('x',14.25,1,2.44,9);
+  hitWall('x',14.25,1,-9,-2.44);
+  hitWall('x',-14.25,-1,2.44,9);
+  hitWall('x',-14.25,-1,-9,-2.44);
+  // Bandes de fond du terrain.
+  hitWall('z',8.85,1,-14.4,14.4);
+  hitWall('z',-8.85,-1,-14.4,14.4);
+  // Parois latérales des cages.
+  hitWall('z',2.44,1,14.4,17.4);
+  hitWall('z',-2.44,-1,14.4,17.4);
+  hitWall('z',2.44,1,-17.4,-14.4);
+  hitWall('z',-2.44,-1,-17.4,-14.4);
   // Fonds des deux cages.
-  hitWall(17.25,17.55,-2.59,2.59);
-  hitWall(-17.55,-17.25,-2.59,2.59);
+  hitWall('x',17.25,1,-2.44,2.44);
+  hitWall('x',-17.25,-1,-2.44,2.44);
   const speed=Math.hypot(u.vx,u.vz);
   if(puckGlide<=0){u.vx=0;u.vz=0}
   else if(speed>0){
@@ -521,7 +526,7 @@ function startMatch(syncStartAt,matchDuration){
 }
 function backMenu(){ended=true;hockeyFaceoff=null;countdown=0;$('#countdown').classList.add('hidden');sawEnabled=false;arenaScreen.classList.add('hidden');menu.classList.remove('hidden')}
 function requestMatchStart(){if(net.role==='guest')return netStatus('En attente du lancement par l’hôte.');if(net.role==='host'&&net.opponent)return launchOnlineMatch();startMatch()}
- function toggleTestMode(){if(net.role)return netStatus('Le mode test est disponible hors ligne.');testMode=!testMode;$('#test-mode').textContent='MODE TEST : '+(testMode?'ACTIVÉ':'DÉSACTIVÉ');$('#test-mode').classList.toggle('selected',testMode);netStatus(testMode?'Mode test : le robot adverse restera immobile.':'Mode normal : l’IA est activée.')}
+ function toggleTestMode(){if(net.role)return netStatus('Le mode test est disponible hors ligne.');testMode=!testMode;$('#test-mode').textContent='MODE TEST : '+(testMode?'ACTIVÉ':'DÉSACTIVÉ');$('#test-mode').classList.toggle('selected',testMode);netStatus(testMode?'Mode test : robot adverse sans IA, déplaçable par poussée.':'Mode normal : l’IA est activée.')}
  $('#test-mode').addEventListener('click',toggleTestMode);
 $('#start').addEventListener('click',requestMatchStart);$('#back-menu').addEventListener('click',backMenu);$('#end-menu').addEventListener('click',backMenu);$('#rematch').addEventListener('click',requestMatchStart);
 addEventListener('keydown',e=>{if(waitingForBind){e.preventDefault();bindings[waitingForBind.dataset.bind]=e.code;waitingForBind.classList.remove('waiting');waitingForBind=null;try{localStorage.setItem('robotArenaBindings',JSON.stringify(bindings))}catch{}renderBindings();return}if(!keys[e.code]&&ended&&!$('#controls-panel').classList.contains('hidden')&&e.code===bindings.action)sawEnabled=!sawEnabled;keys[e.code]=true;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});addEventListener('keyup',e=>keys[e.code]=false);
@@ -547,13 +552,13 @@ function loop(){
   const reportBad=stage=>{if(badBot(player)||badBot(enemy)){ended=true;window.__showArenaDiagnostic?.('V.23 — NaN détecté '+stage+' · BLEU pos '+[player.root.position.x,player.root.position.y,player.root.position.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' rot '+[player.root.rotation.x,player.root.rotation.y,player.root.rotation.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' · ROUGE pos '+[enemy.root.position.x,enemy.root.position.y,enemy.root.position.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' rot '+[enemy.root.rotation.x,enemy.root.rotation.y,enemy.root.rotation.z].map(v=>Number.isFinite(v)?v.toFixed(2):'NaN').join(',')+' · vitesses '+player.v.toFixed(2)+' / '+enemy.v.toFixed(2),true);return true}return false};
   if(net.role!=='guest'){
    drive(player,dt,f,steering);if(reportBad('après conduite joueur'))return;
-   if(net.role==='host'&&net.opponent&&net.ws?.readyState===WebSocket.OPEN&&net.roomId){drive(enemy,dt,net.remote.throttle,net.remote.steering);if(mode==='hockey'&&net.remote.action)attackPuck(enemy)}else if(!testMode)updateAI(dt);else{enemy.v=0;enemy.slideX=enemy.slideZ=0}
+   if(net.role==='host'&&net.opponent&&net.ws?.readyState===WebSocket.OPEN&&net.roomId){drive(enemy,dt,net.remote.throttle,net.remote.steering);if(mode==='hockey'&&net.remote.action)attackPuck(enemy)}else if(!testMode)updateAI(dt);else coastBot(enemy,dt)
    if(reportBad('après IA'))return;
   }
   confineRobot(player);confineRobot(enemy);if(reportBad('après limites'))return;
   if(net.role!=='guest'){
-   if(mode==='hockey'){const ex=enemy.root.position.clone(),er=enemy.root.rotation.y;collideBots(player,enemy,dt);if(testMode){enemy.root.position.copy(ex);enemy.root.rotation.y=er;enemy.v=0}if(reportBad('après collision robots'))return;if(!hockeyFaceoff){updatePuck(dt);if(sawInput)attackPuck(player)}}
-   else{const ex=enemy.root.position.clone(),er=enemy.root.rotation.y;collideBots(player,enemy,dt);if(testMode){enemy.root.position.copy(ex);enemy.root.rotation.y=er;enemy.v=0}if(reportBad('après collision robots'))return;if(mode==='sumo')updateSumo()}
+   if(mode==='hockey'){collideBots(player,enemy,dt);if(reportBad('après collision robots'))return;if(!hockeyFaceoff){updatePuck(dt);if(sawInput)attackPuck(player)}}
+   else{collideBots(player,enemy,dt);if(reportBad('après collision robots'))return;if(mode==='sumo')updateSumo()}
    updateHud();
    const now=performance.now();if(net.role==='host'&&net.roomId&&now-net.lastState>=1000/net.hz){wsSend('state',{state:{blue:{x:player.root.position.x,y:player.root.position.y,z:player.root.position.z,r:player.root.rotation.y,v:player.v,hp:player.hp,contacts:player.contacts},red:{x:enemy.root.position.x,y:enemy.root.position.y,z:enemy.root.position.z,r:enemy.root.rotation.y,v:enemy.v,hp:enemy.hp,contacts:enemy.contacts},puck:puck?{x:puck.position.x,y:puck.position.y,z:puck.position.z,vx:puck.userData.vx,vz:puck.userData.vz,rx:puck.rotation.x,rz:puck.rotation.z}:null,hockeyFaceoff:hockeyFaceoff?{phase:hockeyFaceoff.phase}:null,remaining,scoreBlue,scoreRed,roundBlue,roundRed}});net.lastState=now}
   }
