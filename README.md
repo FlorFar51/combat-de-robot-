@@ -19,3 +19,4 @@ Le jeu est statique : ouvrir `index.html` via un serveur HTTP ou publier le dép
 Les règles sont des adaptations ludiques inspirées de compétitions de robots réelles, et non des reproductions intégrales de leurs règlements. sqfezqfsdnfxbgf
 dzafze
 fezfez
+hgfhgf
