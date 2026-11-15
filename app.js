@@ -27,7 +27,7 @@ const physicsLab=(()=>{
  const canvas=document.querySelector('#physics-canvas'),status=document.querySelector('#physics-state');
  if(!canvas)return null;
  let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false,previousRenderPosition,currentRenderPosition,previousRenderQuaternion,currentRenderQuaternion;
- const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune';
+ const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune',perfWindowStart=0,perfFrames=0,perfSteps=0,perfMaxFrame=0;
   const inputDiag=()=>document.querySelector('#physics-input-diagnostic');
   function logLabInput(message){lastLabAction=message;const el=inputDiag();if(el)el.textContent='DERNIÈRE ACTION : '+message;}
  const settings={power:.65,turn:.55,grip:.85,brake:false};
@@ -144,8 +144,12 @@ const physicsLab=(()=>{
   try{
    const rect=canvas.getBoundingClientRect();
    if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
-   const dt=Math.min((now-last)/1000||0,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
-   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);drive();world.step();const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt}
+   const rawDt=(now-last)/1000||0,dt=Math.min(rawDt,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
+   let stepsThisFrame=0;
+   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);drive();world.step();const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt;stepsThisFrame++}
+   perfFrames++;perfSteps+=stepsThisFrame;perfMaxFrame=Math.max(perfMaxFrame,rawDt*1000);
+   if(!perfWindowStart)perfWindowStart=now;
+   if(now-perfWindowStart>=1000){const elapsed=(now-perfWindowStart)/1000,fps=perfFrames/elapsed,physicsHz=perfSteps/elapsed,vel=body.linvel(),speed=Math.hypot(vel.x,vel.z);status.textContent='FPS '+fps.toFixed(0)+' · PHYS '+physicsHz.toFixed(0)+' Hz · PIC '+perfMaxFrame.toFixed(0)+' ms · V '+speed.toFixed(2)+' m/s';perfWindowStart=now;perfFrames=0;perfSteps=0;perfMaxFrame=0}
    const alpha=clamp(accumulator/fixedDt,0,1);robotVisual.position.lerpVectors(previousRenderPosition,currentRenderPosition,alpha);robotVisual.quaternion.slerpQuaternions(previousRenderQuaternion,currentRenderQuaternion,alpha);
    wheels.forEach(w=>{w.mesh.rotation.x=w.spin});
    const p=robotVisual.position;const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,1-Math.exp(-5*dt));camera.lookAt(p.x,p.y,p.z);
