@@ -75,23 +75,23 @@ const physicsLab=(()=>{
  }
  function localToWorld(x,y,z){const q=body.rotation();const p=body.translation();const v=new RAPIER.Vector3(x,y,z);const r=q;const xx=v.x,yy=v.y,zz=v.z;v.x=(1-2*(r.y*r.y+r.z*r.z))*xx+2*(r.x*r.y-r.z*r.w)*yy+2*(r.x*r.z+r.y*r.w)*zz;v.y=2*(r.x*r.y+r.z*r.w)*xx+(1-2*(r.x*r.x+r.z*r.z))*yy+2*(r.y*r.z-r.x*r.w)*zz;v.z=2*(r.x*r.z-r.y*r.w)*xx+2*(r.y*r.z+r.x*r.w)*yy+(1-2*(r.x*r.x+r.y*r.y))*zz;return V(p.x+v.x,p.y+v.y,p.z+v.z)}
  function drive(){
-  const forward=keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'),left=keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),keyboardBrake=keys.has('Space');
-  // Axe 3 : repos à +1, accélération vers -1. Mapping partagé avec les autres modes.
+  const forward=keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'),reverse=keys.has('KeyS')||keys.has('ArrowDown'),left=keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),keyboardBrake=keys.has('Space');
+  // Laboratoire : A2 (axe Y du joystick gauche / axe 3 indiqué dans l'interface) = avance-recul, A0 (axe X) = direction.
   const pads=typeof navigator!=='undefined'&&navigator.getGamepads?[...navigator.getGamepads()]:[];
   const pad=pads.find(p=>p&&p.connected);
-  const throttleAxis=controllerMap.throttle.axis;
-  const axis3=pad?.axes?.[throttleAxis]??1;
-   if(pad){const states=pad.buttons.map((b,i)=>!!b?.pressed);states.forEach((pressed,i)=>{if(pressed&&!lastButtonStates[i])logLabInput('Manette · bouton '+i+' appuyé');if(!pressed&&lastButtonStates[i])logLabInput('Manette · bouton '+i+' relâché')});lastButtonStates=states;const snap=pad.axes.map((v,i)=>'A'+i+'='+Number(v||0).toFixed(2)).join(' · ');if(snap!==lastAxisSnapshot){lastAxisSnapshot=snap;const el=inputDiag();if(el)el.textContent='AXES MANETTE : '+snap+' | '+lastLabAction;}}
-  const gamepadThrottle=Math.max(0,Math.min(1,axis3*controllerMap.throttle.invert));
-  const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
-
-
+  const throttleAxis=2,axis3=pad?.axes?.[throttleAxis]??0;
+  if(pad){const states=pad.buttons.map((b,i)=>!!b?.pressed);states.forEach((pressed,i)=>{if(pressed&&!lastButtonStates[i])logLabInput('Manette · bouton '+i+' appuyé');if(!pressed&&lastButtonStates[i])logLabInput('Manette · bouton '+i+' relâché')});lastButtonStates=states;const snap=pad.axes.map((v,i)=>'A'+i+'='+Number(v||0).toFixed(2)).join(' · ');if(snap!==lastAxisSnapshot){lastAxisSnapshot=snap;const el=inputDiag();if(el)el.textContent='AXES MANETTE : '+snap+' | '+lastLabAction;}}
+  let gamepadThrottle=axis3*controllerMap.throttle.invert;
+  if(Math.abs(gamepadThrottle)<.14)gamepadThrottle=0;
+  const keyboardThrottle=(forward?1:0)-(reverse?1:0);
+  const throttle=keyboardThrottle||gamepadThrottle;
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
-  const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
+  const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer*controllerMap.steering.invert;
   var steer=keyboardSteer||padSteer;
-  const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
-  if(throttle>.01)lastLabAction='Propulsion active · '+Math.round(throttle*100)+' %';
+  // Aucun bouton de manette n'est utilisé pour freiner ou propulser.
+  const brake=keyboardBrake;
+  if(Math.abs(throttle)>.01)lastLabAction=(throttle>0?'Avance':'Recul')+' active · '+Math.round(Math.abs(throttle)*100)+' %';
   else if(Math.abs(steer)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
   else if(brake)lastLabAction='Frein actif';
   const rot=body.rotation(),p=body.translation();
@@ -119,7 +119,7 @@ const physicsLab=(()=>{
    }else w.spin*=.995;
   }
    // Secours moteur direct si les raycasts de roues ne detectent aucun contact.
-   if(throttle>0&&grounded===0){
+   if(Math.abs(throttle)>.01&&grounded===0){
     const fallback=throttle*settings.power*body.mass()*8;
     body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
     appliedMotor=fallback;
@@ -128,7 +128,7 @@ const physicsLab=(()=>{
     const msg=document.querySelector('#physics-message');
     if(msg){
      const mass=Number(body.mass())||0,pos=body.translation(),vel=body.linvel();
-     msg.textContent='LABO DIAG v77 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
+     msg.textContent='LABO DIAG v80 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
     }
    }
   // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
