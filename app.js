@@ -53,8 +53,8 @@ const physicsLab=(()=>{
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
-    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.12,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.95).setRestitution(.03),body);
-    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.12,0);mesh.castShadow=true;
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.23,.08).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.95).setRestitution(.03),body);
+    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,0);mesh.castShadow=true;
     wheels.push({x,collider:col,mesh,spin:0});
    }
    robotVisual=new THREE.Group();scene.add(robotVisual);
@@ -92,8 +92,8 @@ const physicsLab=(()=>{
   // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
   let grounded=0,rayHits=0;
   for(const w of wheels){
-   const origin=localToWorld(w.x,-.1,0),down=V(0,-1,0);
-   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.48,true,undefined,undefined,undefined,body);
+   const origin=localToWorld(w.x,-.20,0),down=V(0,-1,0);
+   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.5,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
     rayHits++;grounded++;
     const point=V(origin.x,origin.y-hit.toi,origin.z);
