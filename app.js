@@ -27,7 +27,7 @@ const physicsLab=(()=>{
  const canvas=document.querySelector('#physics-canvas'),status=document.querySelector('#physics-state');
  if(!canvas)return null;
  let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false,previousRenderPosition,currentRenderPosition,previousRenderQuaternion,currentRenderQuaternion;
- const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune',perfWindowStart=0,perfFrames=0,perfSteps=0,perfMaxFrame=0;
+ const fixedDt=1/120,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune',perfWindowStart=0,perfFrames=0,perfSteps=0,perfMaxFrame=0;
   const inputDiag=()=>document.querySelector('#physics-input-diagnostic');
   function logLabInput(message){lastLabAction=message;const el=inputDiag();if(el)el.textContent='DERNIÈRE ACTION : '+message;}
  const settings={power:1,turn:1,grip:.85,brake:false};
@@ -52,25 +52,25 @@ const physicsLab=(()=>{
    body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
    previousRenderPosition=new THREE.Vector3(0,.43,0);currentRenderPosition=new THREE.Vector3(0,.43,0);previousRenderQuaternion=new THREE.Quaternion();currentRenderQuaternion=new THREE.Quaternion();
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.16,0).setFriction(.75).setRestitution(.08),body);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.20,0).setFriction(.75).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
     const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.95).setRestitution(.03),body);
     const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,0);mesh.castShadow=true;
-    wheels.push({x,collider:col,mesh,spin:0});
+    wheels.push({x,collider:col,mesh,spin:0,previousSpin:0});
    }
    robotVisual=new THREE.Group();scene.add(robotVisual);
-   visualBox(robotVisual,1.56,.4,1.12,mats.frame,[0,-.16,0]);
-   visualBox(robotVisual,1.02,.12,.8,mats.top,[0,.095,-.03]);
+   visualBox(robotVisual,1.56,.4,1.12,mats.frame,[0,-.20,0]);
+   visualBox(robotVisual,1.02,.12,.8,mats.top,[0,.055,-.03]);
    // Two fixed forks and low-friction skids.
-   visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.29,-.91]);
-   visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.31,.52]);
-   visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.31,.52]);
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.29,-.91).setFriction(.2).setRestitution(.04),body);
-   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.31,.52).setFriction(.16).setRestitution(.02),body);
+   visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.33,-.91]);
+   visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.35,.52]);
+   visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.35,.52]);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.33,-.91).setFriction(.2).setRestitution(.04),body);
+   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.35,.52).setFriction(.16).setRestitution(.02),body);
    wheels.forEach(w=>robotVisual.add(w.mesh));
-   clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 60 HZ';
+   clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 120 HZ';
    requestAnimationFrame(frame);
   }catch(err){failed=true;status.textContent='ERREUR PHYSIQUE';document.querySelector('#physics-message').textContent='Impossible de charger Rapier : '+(err?.message||String(err));console.error(err)}
  }
@@ -146,12 +146,12 @@ const physicsLab=(()=>{
    if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
    const rawDt=(now-last)/1000||0,dt=Math.min(rawDt,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
    let stepsThisFrame=0;
-   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);drive();world.step();const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt;stepsThisFrame++}
+   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);wheels.forEach(w=>{w.previousSpin=w.spin});drive();world.step();const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt;stepsThisFrame++}
    perfFrames++;perfSteps+=stepsThisFrame;perfMaxFrame=Math.max(perfMaxFrame,rawDt*1000);
    if(!perfWindowStart)perfWindowStart=now;
    if(now-perfWindowStart>=1000){const elapsed=(now-perfWindowStart)/1000,fps=perfFrames/elapsed,physicsHz=perfSteps/elapsed,vel=body.linvel(),speed=Math.hypot(vel.x,vel.z);status.textContent='FPS '+fps.toFixed(0)+' · PHYS '+physicsHz.toFixed(0)+' Hz · PIC '+perfMaxFrame.toFixed(0)+' ms · V '+speed.toFixed(2)+' m/s';perfWindowStart=now;perfFrames=0;perfSteps=0;perfMaxFrame=0}
    const alpha=clamp(accumulator/fixedDt,0,1);robotVisual.position.lerpVectors(previousRenderPosition,currentRenderPosition,alpha);robotVisual.quaternion.slerpQuaternions(previousRenderQuaternion,currentRenderQuaternion,alpha);
-   wheels.forEach(w=>{w.mesh.rotation.x=w.spin});
+   wheels.forEach(w=>{w.mesh.rotation.x=w.previousSpin+(w.spin-w.previousSpin)*alpha});
    const p=robotVisual.position;const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,1-Math.exp(-5*dt));camera.lookAt(p.x,p.y,p.z);
    renderer.render(scene,camera);requestAnimationFrame(frame);
   }catch(err){
