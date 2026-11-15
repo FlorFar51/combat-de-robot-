@@ -52,7 +52,7 @@ const physicsLab=(()=>{
    body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
    previousRenderPosition=new THREE.Vector3(0,.43,0);currentRenderPosition=new THREE.Vector3(0,.43,0);previousRenderQuaternion=new THREE.Quaternion();currentRenderQuaternion=new THREE.Quaternion();
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setFriction(.75).setRestitution(.08),body);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.10,0).setFriction(.75).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
@@ -61,14 +61,14 @@ const physicsLab=(()=>{
     wheels.push({x,collider:col,mesh,spin:0});
    }
    robotVisual=new THREE.Group();scene.add(robotVisual);
-   visualBox(robotVisual,1.56,.4,1.12,mats.frame,[0,0,0]);
-   visualBox(robotVisual,1.02,.12,.8,mats.top,[0,.255,-.03]);
+   visualBox(robotVisual,1.56,.4,1.12,mats.frame,[0,-.10,0]);
+   visualBox(robotVisual,1.02,.12,.8,mats.top,[0,.155,-.03]);
    // Two fixed forks and low-friction skids.
-   visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.13,-.91]);
-   visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.15,.52]);
-   visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.15,.52]);
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.13,-.91).setFriction(.2).setRestitution(.04),body);
-   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.15,.52).setFriction(.16).setRestitution(.02),body);
+   visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.23,-.91]);
+   visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.25,.52]);
+   visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.25,.52]);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.23,-.91).setFriction(.2).setRestitution(.04),body);
+   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.25,.52).setFriction(.16).setRestitution(.02),body);
    wheels.forEach(w=>robotVisual.add(w.mesh));
    clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 60 HZ';
    requestAnimationFrame(frame);
