@@ -57,13 +57,17 @@ const physicsLab=(()=>{
     world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setFriction(.55).setRestitution(.04),rb);
    }
    function staticTire(x,z,r=.72){
-    const mesh=new THREE.Mesh(new THREE.TorusGeometry(r*.72,r*.28,12,28),tireMat);mesh.position.set(x,r*.72,z);mesh.rotation.x=Math.PI/2;mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
-    const rb=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,r*.72,z));
+    // Pneus debout : visuel et collision partagent le même axe (horizontal).
+    const mesh=new THREE.Mesh(new THREE.TorusGeometry(r*.72,r*.28,12,28),tireMat);mesh.position.set(x,r,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+    const q={x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2};
+    const rb=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,r,z).setRotation(q));
     world.createCollider(RAPIER.ColliderDesc.cylinder(r*.28,r).setFriction(.8).setRestitution(.08),rb);
    }
    // Rampes longues et douces, accessibles depuis le centre.
-   staticBox(5,.4,8,-6,.48,-7,-.20,0,0,rampMat);
-   staticBox(5,.4,8,7,.48,7,.20,0,0,rampMat);
+   // Rampes réglées pour que leur extrémité basse arrive au niveau du sol.
+   const rampY=.2*Math.cos(.20)+4*Math.sin(.20)+.02;
+   staticBox(5,.4,8,-6,rampY,-7,-.20,0,0,rampMat);
+   staticBox(5,.4,8,7,rampY,7,.20,0,0,rampMat);
    // Marches, blocs bas et petit mur à franchir.
    staticBox(3,.35,2,0,.18,-5);
    staticBox(3,.7,2,0,.35,-8);
