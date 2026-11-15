@@ -43,6 +43,21 @@
           <button id="join-lobby" class="online-button secondary-online">REJOINDRE LE LOBBY</button>
         </div>
       </section>
+      <section id="physics-lab" class="physics-lab">
+        <div class="physics-lab-head">
+          <div><b>LABORATOIRE PHYSIQUE 3D</b><small>Prototype indépendant · Rapier + Three.js</small></div>
+          <span id="physics-state">INITIALISATION…</span>
+        </div>
+        <div class="physics-lab-view"><canvas id="physics-canvas" aria-label="Prototype de robot avec physique 3D"></canvas>
+          <div class="physics-overlay"><span>AVANCE : Z / ↑</span><span>TOURNER : Q / D</span><span>ESPACE : FREIN</span><span>R : REMISE À PLAT</span></div>
+        </div>
+        <div class="physics-lab-controls">
+          <label>PUISSANCE <output id="physics-power-value">65 %</output><input id="physics-power" type="range" min="10" max="100" value="65"></label>
+          <label>ROTATION <output id="physics-turn-value">55 %</output><input id="physics-turn" type="range" min="10" max="100" value="55"></label>
+          <label>ADHÉRENCE <output id="physics-grip-value">85 %</output><input id="physics-grip" type="range" min="20" max="100" value="85"></label>
+        </div>
+        <p id="physics-message">Prototype de validation : gravité, basculement, roues motrices et contacts au sol.</p>
+      </section>
       <div class="setup">
         <div class="setup-title"><span>PARAMÈTRES</span></div>
         <div class="settings-grid">
