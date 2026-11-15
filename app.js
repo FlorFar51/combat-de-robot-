@@ -81,7 +81,7 @@ const physicsLab=(()=>{
   const axis3=pad?.axes?.[throttleAxis]??1;
   const gamepadThrottle=Math.max(0,Math.min(1,axis3*controllerMap.throttle.invert));
   const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
-  const axis3Direction=pad?-1:1;
+  const axis3Direction=gamepadThrottle>.14?-1:1;
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
