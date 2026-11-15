@@ -45,8 +45,12 @@ function buildArena(){
  for(const z of [-halfDepth,halfDepth])add(new THREE.BoxGeometry(arenaWidth,.65,.3),M.black,world,0,.12,z);
  for(const x of [-halfWidth,halfWidth]){
   for(const z of [-5.11,5.11])add(new THREE.BoxGeometry(.3,.65,7.78),M.black,world,x,.12,z);
-  // Prolongement de terrain derrière le but : couloir de 2.44 x 2.44, sans cage.
-  add(new THREE.BoxGeometry(2.44,.45,2.44),M.floor,world,x+(x>0?1.22:-1.22),-.28,0);
+  // Prolongement de terrain doublé en profondeur ; l'ouverture reste strictement à 2.44.
+  const extensionDepth=4.88,extensionCenter=x+(x>0?extensionDepth/2:-extensionDepth/2);
+  add(new THREE.BoxGeometry(extensionDepth,.45,2.44),M.floor,world,extensionCenter,-.28,0);
+  // Délimitations noires sur le périmètre extérieur du prolongement.
+  for(const z of [-1.37,1.37])add(new THREE.BoxGeometry(extensionDepth,.65,.3),M.black,world,extensionCenter,.12,z);
+  add(new THREE.BoxGeometry(.3,.65,2.74),M.black,world,x+(x>0?extensionDepth:-extensionDepth),.12,0);
  }
  const circle=add(new THREE.TorusGeometry(1.1,.025,6,48),M.line,world,0,-.025,0);circle.rotation.x=Math.PI/2;
 }
@@ -154,7 +158,7 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<1.22;const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-16.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?16.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
+ const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<1.22;const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-19.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?19.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
