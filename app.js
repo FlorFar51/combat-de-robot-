@@ -219,6 +219,7 @@ function collideBots(a,b,dt){
  a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
 function collidePuckWithRobot(b){
+  const radius=.344;
   // Collision 3D sur les volumes réels du modèle : châssis, roues et fourches.
   const puckHalfThickness=.072,puckBottom=puck.position.y-puckHalfThickness,puckTop=puck.position.y+puckHalfThickness;
   const parts=robotHitboxes(b);
