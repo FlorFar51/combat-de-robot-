@@ -86,17 +86,16 @@ const physicsLab=(()=>{
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
   const steer=keyboardSteer||padSteer;
   const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
-  if(++inputDebugFrames%12===0){const msg=document.querySelector('#physics-message');if(msg)msg.textContent='ENTRÉES LABO · Clavier '+(forward?'AVANCE ': '')+(left?'GAUCHE ': '')+(right?'DROITE ':'')+(keyboardBrake?'FREIN ':'')+' · Axe 3 '+axis3.toFixed(2)+' · Consigne '+Math.round(throttle*100)+' % · Direction '+steer.toFixed(2)+' · Vitesse '+Math.hypot(body.linvel().x,body.linvel().z).toFixed(2)+' m/s';}
   const rot=body.rotation(),p=body.translation();
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
   const lv=body.linvel();
   // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
-  let grounded=0;
+  let grounded=0,rayHits=0;
   for(const w of wheels){
    const origin=localToWorld(w.x,-.1,0),down=V(0,-1,0);
    const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.48,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
-    grounded++;
+    rayHits++;grounded++;
     const point=V(origin.x,origin.y-hit.toi,origin.z);
     const wheelForward=localToWorld(0,0,-1),wheelSide=localToWorld(1,0,0);
     const pointVelocity=body.velocityAtPoint(point);
@@ -111,6 +110,7 @@ const physicsLab=(()=>{
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
   }
+  if(++inputDebugFrames%12===0){const msg=document.querySelector('#physics-message');if(msg)msg.textContent='ENTRÉES LABO · Clavier '+(forward?'AVANCE ': '')+(left?'GAUCHE ': '')+(right?'DROITE ':'')+(keyboardBrake?'FREIN ':'')+' · Axe 3 '+axis3.toFixed(2)+' · Consigne '+Math.round(throttle*100)+' % · Direction '+steer.toFixed(2)+' · Roues au sol '+grounded+'/2 · Rayons '+rayHits+'/2 · Vitesse '+Math.hypot(body.linvel().x,body.linvel().z).toFixed(2)+' m/s';}
   // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
   if(grounded>0&&Math.abs(steer)>.01){
    const yawTorque=steer*settings.turn*body.mass()*3.2;
