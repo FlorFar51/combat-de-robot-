@@ -143,7 +143,7 @@ const physicsLab=(()=>{
     const desired=(throttle*settings.power*2*7.5+differential-vForward*(brake?8:2.2));
     const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;if(w.x<0)leftMotor=motor;else rightMotor=motor;
     const lateral=clamp(-vSide*body.mass()*3.2*settings.grip,-traction*.65,traction*.65);if(w.x<0)leftLateral=lateral;else rightLateral=lateral;
-    const forcePoint=localToWorld(w.x,-.20,.12);body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,0,wheelForward.z*motor+wheelSide.z*lateral),forcePoint,true);
+    body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
    }
@@ -166,7 +166,7 @@ const physicsLab=(()=>{
    if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
    const rawDt=(now-last)/1000||0,dt=Math.min(rawDt,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
    let stepsThisFrame=0;
-   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);wheels.forEach(w=>{w.previousSpin=w.spin});drive();world.step();const angular=body.angvel();body.setAngvel(V(clamp(angular.x,-4,4),clamp(angular.y,-6,6),clamp(angular.z,-4,4)),true);const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt;stepsThisFrame++}
+   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);wheels.forEach(w=>{w.previousSpin=w.spin});drive();world.step();const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt;stepsThisFrame++}
    perfFrames++;perfSteps+=stepsThisFrame;perfMaxFrame=Math.max(perfMaxFrame,rawDt*1000);
    if(!perfWindowStart)perfWindowStart=now;
    if(now-perfWindowStart>=1000){const elapsed=(now-perfWindowStart)/1000,fps=perfFrames/elapsed,physicsHz=perfSteps/elapsed,vel=body.linvel(),speed=Math.hypot(vel.x,vel.z);status.textContent='FPS '+fps.toFixed(0)+' · PHYS '+physicsHz.toFixed(0)+' Hz · PIC '+perfMaxFrame.toFixed(0)+' ms · V '+speed.toFixed(2)+' m/s';perfWindowStart=now;perfFrames=0;perfSteps=0;perfMaxFrame=0}
