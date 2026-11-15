@@ -280,15 +280,25 @@ function updatePuck(dt){
   const inGoalExtension=mode==='hockey'&&Math.abs(puck.position.x)>14.1&&Math.abs(puck.position.x)<17.55;
   // Les deux bandes noires intérieures des cages repoussent le palet comme les bandes latérales.
   const goalSideLimit=2.44-radius;
-   if(inGoalExtension&&Math.abs(puck.position.z)>goalSideLimit){
-    puck.position.z=Math.sign(puck.position.z)*goalSideLimit;
-    puck.userData.vz*=-boardBounce;
-   }
-  // Ne pas refermer l'entrée des cages avec l'ancienne limite verticale du terrain.
-  if(Math.abs(puck.position.x)>14.1&&!insideGoal&&!inGoalExtension){
-   puck.position.x=clamp(puck.position.x,-14.1,14.1);puck.userData.vx*=-boardBounce;
+  // Rebond sur la face intérieure des parois, en tenant compte du rayon du palet.
+  if(inGoalExtension&&Math.abs(puck.position.z)>goalSideLimit){
+   const side=Math.sign(puck.position.z);
+   puck.position.z=side*goalSideLimit;
+   if(puck.userData.vz*side>0)puck.userData.vz=-Math.abs(puck.userData.vz)*boardBounce;
   }
-  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-boardBounce}
+  // Les ouvertures des cages restent libres ; les autres portions des murs repoussent le palet.
+  const rinkXLimit=14.4-.15-radius;
+  if(Math.abs(puck.position.x)>rinkXLimit&&!insideGoal&&!inGoalExtension){
+   const side=Math.sign(puck.position.x);
+   puck.position.x=side* rinkXLimit;
+   if(puck.userData.vx*side>0)puck.userData.vx=-Math.abs(puck.userData.vx)*boardBounce;
+  }
+  const rinkZLimit=9-.15-radius;
+  if(Math.abs(puck.position.z)>rinkZLimit){
+   const side=Math.sign(puck.position.z);
+   puck.position.z=side* rinkZLimit;
+   if(puck.userData.vz*side>0)puck.userData.vz=-Math.abs(puck.userData.vz)*boardBounce;
+  }
  }
  const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
 }
