@@ -143,15 +143,10 @@ const physicsLab=(()=>{
     const desired=(throttle*settings.power*2*7.5+differential-vForward*(brake?8:2.2));
     const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;if(w.x<0)leftMotor=motor;else rightMotor=motor;
     const lateral=clamp(-vSide*body.mass()*3.2*settings.grip,-traction*.65,traction*.65);if(w.x<0)leftLateral=lateral;else rightLateral=lateral;
-    const forcePoint=localToWorld(w.x,0,.12);body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),forcePoint,true);
+    const forcePoint=localToWorld(w.x,-.20,.12);body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,0,wheelForward.z*motor+wheelSide.z*lateral),forcePoint,true);
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
   }
-   // Secours moteur direct si les raycasts de roues ne detectent aucun contact.
-   if(Math.abs(throttle)>.01&&grounded===0){
-    const fallback=throttle*settings.power*2*body.mass()*8;
-    body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
-    appliedMotor=fallback;
    }
    if(++inputDebugFrames%12===0){
     const msg=document.querySelector('#physics-message');
