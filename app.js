@@ -160,25 +160,46 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const x=bot.root.position.x,z=bot.root.position.z,prevZ=bot.prevZ??z;
- const inHockey=mode==='hockey',entryX=14.12,laneLimit=1.29,backLimit=16.15;
- // Garde le robot dans la cage une fois qu'il a franchi son entrée.
- const insideGoal=inHockey&&Math.abs(x)>entryX&&Math.abs(prevZ)<laneLimit+.12;
- const inGoalLane=inHockey&&(Math.abs(z)<laneLimit||insideGoal);
- const bounds=new THREE.Box3().setFromObject(bot.root);
- const minX=inHockey?(inGoalLane?-backLimit:-14.12):-13.72;
- const maxX=inHockey?(inGoalLane?backLimit:14.12):13.72;
- const minZ=inHockey?-8.72:-13.72,maxZ=inHockey?8.72:13.72;
- if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
- if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
- if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
- if(bounds.max.z>maxZ)bot.root.position.z-=bounds.max.z-maxZ;
- // Les parois latérales de cage bloquent le déplacement transversal,
- // au lieu de renvoyer le robot sur la ligne d'entrée.
- if(inHockey&&Math.abs(bot.root.position.x)>entryX){
-  if(Math.abs(bot.root.position.z)>laneLimit)bot.root.position.z=Math.sign(bot.root.position.z)*laneLimit;
-  if(Math.abs(bot.root.position.x)>backLimit)bot.root.position.x=Math.sign(bot.root.position.x)*backLimit;
+ if(mode!=='hockey'){
+  const bounds=new THREE.Box3().setFromObject(bot.root);
+  const minX=-13.72,maxX=13.72,minZ=-13.72,maxZ=13.72;
+  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
+  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
+  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
+  if(bounds.max.z>maxZ)bot.root.position.z-=bounds.max.z-maxZ;
+  return;
  }
+ // En hockey, on utilise le même rectangle orienté que pour les collisions entre robots.
+ // Son centre est décalé vers l'avant, comme les deux fourches du modèle.
+ const halfW=1.15,halfL=1.214,centerForward=.764;
+ const angle=bot.root.rotation.y,s=Math.sin(angle),c=Math.cos(angle);
+ const centerX=bot.root.position.x+s*centerForward;
+ const centerZ=bot.root.position.z+c*centerForward;
+ const extentX=halfW*Math.abs(c)+halfL*Math.abs(s);
+ const extentZ=halfW*Math.abs(s)+halfL*Math.abs(c);
+ const mouthHalfWidth=2.44;
+ const fitsGoal=Math.abs(centerZ)+extentZ<=mouthHalfWidth;
+ const enteringGoal=Math.abs(centerX)+extentX>14.25;
+ if(enteringGoal&&fitsGoal){
+  // Une fois l'ouverture franchie, les bandes latérales de la cage limitent Z.
+  const zLimit=mouthHalfWidth-extentZ;
+  const boundedZ=clamp(centerZ,-zLimit,zLimit);
+  bot.root.position.z+=boundedZ-centerZ;
+  // Le fond de cage se trouve à x=17.4 (face intérieure x=17.25).
+  const backLimit=17.25-extentX;
+  const boundedX=clamp(centerX,-backLimit,backLimit);
+  bot.root.position.x+=boundedX-centerX;
+ }else{
+  // Hors de l'ouverture, la bande latérale de la patinoire bloque le robot
+  // avant qu'il puisse pénétrer dans le mur.
+  const sideLimit=14.25-extentX;
+  const boundedX=clamp(centerX,-sideLimit,sideLimit);
+  bot.root.position.x+=boundedX-centerX;
+ }
+ // Les bandes transversales de la patinoire restent actives dans tous les cas.
+ const rinkZLimit=8.85-extentZ;
+ const boundedRinkZ=clamp(bot.root.position.z+s*centerForward,-rinkZLimit,rinkZLimit);
+ bot.root.position.z+=boundedRinkZ-(bot.root.position.z+s*centerForward);
 }
 function collideBots(a,b,dt){
  const ah=robotHitboxes(a),bh=robotHitboxes(b);let weaponA=false,weaponB=false;
@@ -263,59 +284,67 @@ function collidePuckWithRobot(b){
 }
 function updatePuck(dt){
  const radius=.344;
- // Palet en PLA sur terrain plastique : faible frottement, légère résistance à l'air.
- // Les vitesses sont exprimées en unités d'arène par seconde.
-
- // Sous-pas 3D : suivre aussi le déplacement vertical pour éviter que le palet traverse la hitbox entre deux frames.
+ // Intégration en sous-pas pour éviter de traverser les robots et les bandes.
  const horizontalTravel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
  const verticalSpeed=Math.abs(Number(puck.userData.vy)||0);
  const verticalTravel=verticalSpeed*dt+9*dt*dt;
  const travel=Math.max(horizontalTravel,verticalTravel);
  const steps=Math.max(1,Math.ceil(travel/.04)),step=dt/steps;
+ const goalHalfWidth=2.44;
+ const goalLine=16;
+ const rinkXLimit=14.4-.15-radius;
+ const rinkZLimit=9-.15-radius;
+ const goalSideLimit=goalHalfWidth-radius;
+ const goalBackLimit=17.4-.15-radius;
+ const boardBounce=.05+puckBounce*.009;
  for(let i=0;i<steps;i++){
-  puck.position.x+=puck.userData.vx*step;puck.position.z+=puck.userData.vz*step;
-  const u=puck.userData;u.vy=Number(u.vy)||0;if(u.vy!==0||puck.position.y>.12){u.vy-=18*step;puck.position.y+=u.vy*step;if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.8)u.vy=-u.vy*.24;else u.vy=0}}
+  puck.position.x+=puck.userData.vx*step;
+  puck.position.z+=puck.userData.vz*step;
+  const u=puck.userData;
+  u.vy=Number(u.vy)||0;
+  if(u.vy!==0||puck.position.y>.12){
+   u.vy-=18*step;puck.position.y+=u.vy*step;
+   if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.8)u.vy=-u.vy*.24;else u.vy=0}
+  }
   for(const b of [player,enemy])collidePuckWithRobot(b);
-  // Glisse réglable de 0 à 100 : à 0, le palet s'arrête immédiatement.
-  const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
-  if(puckGlide<=0){puck.userData.vx=0;puck.userData.vz=0}
+  const speed=Math.hypot(u.vx,u.vz);
+  if(puckGlide<=0){u.vx=0;u.vz=0}
   else if(speed>0){
    const deceleration=8*(.12+speed*.008)*(1-puckGlide/100);
-   const nextSpeed=Math.max(0,speed-deceleration*step);
-   const factor=nextSpeed/speed;
-   puck.userData.vx*=factor;puck.userData.vz*=factor;
+   const nextSpeed=Math.max(0,speed-deceleration*step),factor=nextSpeed/speed;
+   u.vx*=factor;u.vz*=factor;
   }
-  // Le palet (rayon 0,43) doit être entièrement derrière la ligne de but x = +/-16.
-  // L'ouverture utile est réduite de son rayon pour éviter qu'un palet touche un poteau.
-  const insideGoal=Math.abs(puck.position.z)<(2.44-.344);
-  if(insideGoal&&puck.position.x>14.744){scoreGoal('blue');return}
-  if(insideGoal&&puck.position.x< -14.744){scoreGoal('red');return}
-  // Même coefficient de rebond pour les bandes de la patinoire et celles des cages.
-  const boardBounce=.05+puckBounce*.009;
-  const inGoalExtension=mode==='hockey'&&Math.abs(puck.position.x)>14.1&&Math.abs(puck.position.x)<17.55;
-  // Les deux bandes noires intérieures des cages repoussent le palet comme les bandes latérales.
-  const goalSideLimit=2.44-radius;
-  // Rebond sur la face intérieure des parois, en tenant compte du rayon du palet.
-  if(inGoalExtension&&Math.abs(puck.position.z)>goalSideLimit){
+  const inGoalMouth=Math.abs(puck.position.z)<=goalSideLimit;
+  // Le but est validé au fond de la cage, et non juste après la ligne de bande.
+  if(inGoalMouth&&puck.position.x>goalLine){scoreGoal('blue');return}
+  if(inGoalMouth&&puck.position.x< -goalLine){scoreGoal('red');return}
+  // Les bandes latérales de cage commencent à x=14.4 et finissent à x=17.4.
+  const overlapsGoalSide=Math.abs(puck.position.x)>14.4-radius&&Math.abs(puck.position.x)<17.4+radius;
+  if(overlapsGoalSide&&Math.abs(puck.position.z)>goalSideLimit){
    const side=Math.sign(puck.position.z);
    puck.position.z=side*goalSideLimit;
-   if(puck.userData.vz*side>0)puck.userData.vz=-Math.abs(puck.userData.vz)*boardBounce;
+   if(u.vz*side>0)u.vz=-Math.abs(u.vz)*boardBounce;
   }
-  // Les ouvertures des cages restent libres ; les autres portions des murs repoussent le palet.
-  const rinkXLimit=14.4-.15-radius;
-  if(Math.abs(puck.position.x)>rinkXLimit&&!insideGoal&&!inGoalExtension){
+  // À l'entrée, seule l'ouverture réellement dégagée laisse passer le palet.
+  if(!inGoalMouth&&Math.abs(puck.position.x)>rinkXLimit){
    const side=Math.sign(puck.position.x);
    puck.position.x=side* rinkXLimit;
-   if(puck.userData.vx*side>0)puck.userData.vx=-Math.abs(puck.userData.vx)*boardBounce;
+   if(u.vx*side>0)u.vx=-Math.abs(u.vx)*boardBounce;
   }
-  const rinkZLimit=9-.15-radius;
+  // Le fond de cage bloque le palet si celui-ci n'est pas entré dans l'ouverture.
+  if(!inGoalMouth&&Math.abs(puck.position.x)>goalBackLimit){
+   const side=Math.sign(puck.position.x);
+   puck.position.x=side*goalBackLimit;
+   if(u.vx*side>0)u.vx=-Math.abs(u.vx)*boardBounce;
+  }
   if(Math.abs(puck.position.z)>rinkZLimit){
    const side=Math.sign(puck.position.z);
    puck.position.z=side* rinkZLimit;
-   if(puck.userData.vz*side>0)puck.userData.vz=-Math.abs(puck.userData.vz)*boardBounce;
+   if(u.vz*side>0)u.vz=-Math.abs(u.vz)*boardBounce;
   }
  }
- const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
+ const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
+ if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
 }
 function showPointBanner(text){const banner=$('#round-banner');banner.textContent=text;banner.classList.remove('hidden','point-pop');void banner.offsetWidth;banner.classList.add('point-pop')}
  function scoreGoal(team){if(goalLock>0||hockeyFaceoff)return;goalLock=1.2;if(team==='blue')scoreBlue++;else scoreRed++;const label=team==='blue'?'BLEU':'ROUGE';$('#status').textContent='BUT '+label;showPointBanner('BUT '+label);if(mode==='hockey')startHockeyFaceoff();else resetPositions()}
