@@ -146,7 +146,6 @@ const physicsLab=(()=>{
     const forcePoint=localToWorld(w.x,-.20,.12);body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,0,wheelForward.z*motor+wheelSide.z*lateral),forcePoint,true);
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
-  }
    }
    if(++inputDebugFrames%12===0){
     const msg=document.querySelector('#physics-message');
