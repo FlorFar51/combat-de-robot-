@@ -102,7 +102,7 @@ const physicsLab=(()=>{
   // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
   let grounded=0,rayHits=0,appliedMotor=0,leftMotor=0,rightMotor=0,leftLateral=0,rightLateral=0,firstRay='—';
   for(const w of wheels){
-   const origin=localToWorld(w.x,-.20,0),down=V(0,-1,0);
+   const origin=localToWorld(w.x,-.20,.12),down=V(0,-1,0);
    const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.5,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
      rayHits++;grounded++;const toi=Number(hit.toi??hit.timeOfImpact??0);if(firstRay==='—')firstRay=(Number.isFinite(toi)?toi.toFixed(3):'n/a')+' m';
