@@ -84,15 +84,16 @@ const physicsLab=(()=>{
    if(pad){const states=pad.buttons.map((b,i)=>!!b?.pressed);states.forEach((pressed,i)=>{if(pressed&&!lastButtonStates[i])logLabInput('Manette · bouton '+i+' appuyé');if(!pressed&&lastButtonStates[i])logLabInput('Manette · bouton '+i+' relâché')});lastButtonStates=states;const snap=pad.axes.map((v,i)=>'A'+i+'='+Number(v||0).toFixed(2)).join(' · ');if(snap!==lastAxisSnapshot){lastAxisSnapshot=snap;const el=inputDiag();if(el)el.textContent='AXES MANETTE : '+snap+' | '+lastLabAction;}}
   const gamepadThrottle=Math.max(0,Math.min(1,axis3*controllerMap.throttle.invert));
   const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
-   if(throttle>.01)lastLabAction='Propulsion active · '+Math.round(throttle*100)+' %';
-   else if(Math.abs(steer||0)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
-   else if(brake)lastLabAction='Frein actif';
+
 
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
   const steer=keyboardSteer||padSteer;
   const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
+  if(throttle>.01)lastLabAction='Propulsion active · '+Math.round(throttle*100)+' %';
+  else if(Math.abs(steer)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
+  else if(brake)lastLabAction='Frein actif';
   const rot=body.rotation(),p=body.translation();
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
   const lv=body.linvel();
