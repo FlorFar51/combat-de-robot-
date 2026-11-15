@@ -153,6 +153,11 @@ const physicsLab=(()=>{
     body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
     appliedMotor=fallback;
    }
+   // Aide au dégagement en marche arrière : force centrale indépendante des contacts roues.
+   if(throttle<-.1){
+    const reverseAssist=throttle*body.mass()*12;
+    body.addForce(V(fwd.x*reverseAssist,fwd.y*reverseAssist,fwd.z*reverseAssist),true);
+   }
    if(++inputDebugFrames%12===0){
     const msg=document.querySelector('#physics-message');
     if(msg){
