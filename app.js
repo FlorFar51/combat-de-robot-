@@ -49,7 +49,7 @@ const physicsLab=(()=>{
    world=new RAPIER.World(V(0,-9.81,0));world.timestep=fixedDt;
    const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.2,0));
    world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.9).setRestitution(.08),floorBody);
-   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(.35));
+   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
    world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setFriction(.75).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
@@ -111,7 +111,8 @@ const physicsLab=(()=>{
     const vSide=pointVelocity.x*wheelSide.x+pointVelocity.y*wheelSide.y+pointVelocity.z*wheelSide.z;
     const normalLoad=body.mass()*9.81/2;
     const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
-    const desired=(throttle*settings.power*7.5-vForward*(brake?8:2.2));
+    const differential=steer*settings.turn*1.6*(w.x<0?1:-1);
+    const desired=(throttle*settings.power*7.5+differential-vForward*(brake?8:2.2));
     const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;
     const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);
     body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
@@ -128,14 +129,10 @@ const physicsLab=(()=>{
     const msg=document.querySelector('#physics-message');
     if(msg){
      const mass=Number(body.mass())||0,pos=body.translation(),vel=body.linvel();
-     msg.textContent='LABO DIAG v80 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
+     msg.textContent='LABO DIAG v81 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
     }
    }
-  // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
-  if(grounded>0&&Math.abs(steer)>.01){
-   const yawTorque=steer*settings.turn*body.mass()*3.2;
-   const up=localToWorld(0,1,0);body.addTorque(V(up.x*yawTorque,up.y*yawTorque,up.z*yawTorque),true);
-  }
+  // La direction est produite uniquement par le différentiel des roues, sans couple direct sur le châssis.
   if(brake){const velocity=body.linvel();body.setLinvel(V(velocity.x*.94,velocity.y,velocity.z*.94),true)}
   // Keep the demo in its test area; this is a soft arena boundary, not a robot movement clamp.
   if(Math.abs(p.x)>7.5||Math.abs(p.z)>7.5)body.applyImpulse(V(-Math.sign(p.x)*.08,0,-Math.sign(p.z)*.08),true);
