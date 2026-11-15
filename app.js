@@ -283,16 +283,13 @@ function collidePuckWithRobot(b){
   if(collided){puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08}
 }
 function updatePuck(dt){
- const radius=.344;
- const u=puck.userData;
+ const radius=.344,u=puck.userData;
  const horizontalTravel=Math.hypot(u.vx,u.vz)*dt;
  const verticalTravel=Math.abs(Number(u.vy)||0)*dt+9*dt*dt;
- const steps=Math.max(1,Math.ceil(Math.max(horizontalTravel,verticalTravel)/.035));
- const step=dt/steps;
- const goalHalfWidth=2.44,goalLine=16;
- const rinkZLimit=9-.15-radius;
+ const steps=Math.max(1,Math.ceil(Math.max(horizontalTravel,verticalTravel)/.025));
+ const step=dt/steps,goalHalfWidth=2.44,goalLine=16;
  const boardBounce=.05+puckBounce*.009;
- // Résolution cercle/rectangle : déplacement limité à la profondeur réelle du contact.
+ // Collision cercle/AABB avec correction minimale, normale et rebond sur la paroi.
  const hitWall=(minX,maxX,minZ,maxZ)=>{
   const qx=clamp(puck.position.x,minX,maxX),qz=clamp(puck.position.z,minZ,maxZ);
   const dx=puck.position.x-qx,dz=puck.position.z-qz,d2=dx*dx+dz*dz;
@@ -324,23 +321,22 @@ function updatePuck(dt){
   const inGoalMouth=Math.abs(puck.position.z)<=goalHalfWidth-radius;
   if(inGoalMouth&&puck.position.x>goalLine){scoreGoal('blue');return}
   if(inGoalMouth&&puck.position.x< -goalLine){scoreGoal('red');return}
-  // Murs de bande gauche/droite, seulement sur leur segment géométrique réel.
+  // Murs latéraux de la patinoire : x = +/-14.4, ouverture centrale libre.
   hitWall(14.25,14.55,2.44,9);
   hitWall(14.25,14.55,-9,-2.44);
   hitWall(-14.55,-14.25,2.44,9);
   hitWall(-14.55,-14.25,-9,-2.44);
-  // Parois longitudinales des deux cages.
+  // Murs transversaux haut/bas du terrain : z = +/-9.
+  hitWall(-14.4,14.4,8.85,9.15);
+  hitWall(-14.4,14.4,-9.15,-8.85);
+  // Parois hautes/basses des cages, sur toute leur profondeur.
   hitWall(14.4,17.4,2.44,2.74);
   hitWall(14.4,17.4,-2.74,-2.44);
   hitWall(-17.4,-14.4,2.44,2.74);
   hitWall(-17.4,-14.4,-2.74,-2.44);
-  // Fonds de cages.
+  // Fonds des deux cages.
   hitWall(17.25,17.55,-2.59,2.59);
   hitWall(-17.55,-17.25,-2.59,2.59);
-  if(Math.abs(puck.position.z)>rinkZLimit){
-   const side=Math.sign(puck.position.z);puck.position.z=side* rinkZLimit;
-   if(u.vz*side>0)u.vz=-Math.abs(u.vz)*boardBounce;
-  }
   const speed=Math.hypot(u.vx,u.vz);
   if(puckGlide<=0){u.vx=0;u.vz=0}
   else if(speed>0){
