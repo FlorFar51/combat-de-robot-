@@ -284,29 +284,63 @@ function collidePuckWithRobot(b){
 }
 function updatePuck(dt){
  const radius=.344;
- // Intégration en sous-pas pour éviter de traverser les robots et les bandes.
- const horizontalTravel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
- const verticalSpeed=Math.abs(Number(puck.userData.vy)||0);
- const verticalTravel=verticalSpeed*dt+9*dt*dt;
- const travel=Math.max(horizontalTravel,verticalTravel);
- const steps=Math.max(1,Math.ceil(travel/.04)),step=dt/steps;
- const goalHalfWidth=2.44;
- const goalLine=16;
- const rinkXLimit=14.4-.15-radius;
+ const u=puck.userData;
+ const horizontalTravel=Math.hypot(u.vx,u.vz)*dt;
+ const verticalTravel=Math.abs(Number(u.vy)||0)*dt+9*dt*dt;
+ const steps=Math.max(1,Math.ceil(Math.max(horizontalTravel,verticalTravel)/.035));
+ const step=dt/steps;
+ const goalHalfWidth=2.44,goalLine=16;
  const rinkZLimit=9-.15-radius;
- const goalSideLimit=goalHalfWidth-radius;
- const goalBackLimit=17.4-.15-radius;
  const boardBounce=.05+puckBounce*.009;
+ // Résolution cercle/rectangle : déplacement limité à la profondeur réelle du contact.
+ const hitWall=(minX,maxX,minZ,maxZ)=>{
+  const qx=clamp(puck.position.x,minX,maxX),qz=clamp(puck.position.z,minZ,maxZ);
+  const dx=puck.position.x-qx,dz=puck.position.z-qz,d2=dx*dx+dz*dz;
+  if(d2>=radius*radius)return;
+  let nx,nz,depth;
+  if(d2>1e-10){
+   const d=Math.sqrt(d2);nx=dx/d;nz=dz/d;depth=radius-d;
+  }else{
+   const edges=[
+    {d:puck.position.x-minX,nx:-1,nz:0},
+    {d:maxX-puck.position.x,nx:1,nz:0},
+    {d:puck.position.z-minZ,nx:0,nz:-1},
+    {d:maxZ-puck.position.z,nx:0,nz:1}
+   ].sort((a,b)=>a.d-b.d);
+   nx=edges[0].nx;nz=edges[0].nz;depth=radius+Math.max(0,edges[0].d);
+  }
+  puck.position.x+=nx*(depth+.001);puck.position.z+=nz*(depth+.001);
+  const vn=u.vx*nx+u.vz*nz;
+  if(vn<0){u.vx-=(1+boardBounce)*vn*nx;u.vz-=(1+boardBounce)*vn*nz}
+ };
  for(let i=0;i<steps;i++){
-  puck.position.x+=puck.userData.vx*step;
-  puck.position.z+=puck.userData.vz*step;
-  const u=puck.userData;
+  puck.position.x+=u.vx*step;puck.position.z+=u.vz*step;
   u.vy=Number(u.vy)||0;
   if(u.vy!==0||puck.position.y>.12){
    u.vy-=18*step;puck.position.y+=u.vy*step;
    if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.8)u.vy=-u.vy*.24;else u.vy=0}
   }
   for(const b of [player,enemy])collidePuckWithRobot(b);
+  const inGoalMouth=Math.abs(puck.position.z)<=goalHalfWidth-radius;
+  if(inGoalMouth&&puck.position.x>goalLine){scoreGoal('blue');return}
+  if(inGoalMouth&&puck.position.x< -goalLine){scoreGoal('red');return}
+  // Murs de bande gauche/droite, seulement sur leur segment géométrique réel.
+  hitWall(14.25,14.55,2.44,9);
+  hitWall(14.25,14.55,-9,-2.44);
+  hitWall(-14.55,-14.25,2.44,9);
+  hitWall(-14.55,-14.25,-9,-2.44);
+  // Parois longitudinales des deux cages.
+  hitWall(14.4,17.4,2.44,2.74);
+  hitWall(14.4,17.4,-2.74,-2.44);
+  hitWall(-17.4,-14.4,2.44,2.74);
+  hitWall(-17.4,-14.4,-2.74,-2.44);
+  // Fonds de cages.
+  hitWall(17.25,17.55,-2.59,2.59);
+  hitWall(-17.55,-17.25,-2.59,2.59);
+  if(Math.abs(puck.position.z)>rinkZLimit){
+   const side=Math.sign(puck.position.z);puck.position.z=side* rinkZLimit;
+   if(u.vz*side>0)u.vz=-Math.abs(u.vz)*boardBounce;
+  }
   const speed=Math.hypot(u.vx,u.vz);
   if(puckGlide<=0){u.vx=0;u.vz=0}
   else if(speed>0){
@@ -314,37 +348,9 @@ function updatePuck(dt){
    const nextSpeed=Math.max(0,speed-deceleration*step),factor=nextSpeed/speed;
    u.vx*=factor;u.vz*=factor;
   }
-  const inGoalMouth=Math.abs(puck.position.z)<=goalSideLimit;
-  // Le but est validé au fond de la cage, et non juste après la ligne de bande.
-  if(inGoalMouth&&puck.position.x>goalLine){scoreGoal('blue');return}
-  if(inGoalMouth&&puck.position.x< -goalLine){scoreGoal('red');return}
-  // Les bandes latérales de cage commencent à x=14.4 et finissent à x=17.4.
-  const overlapsGoalSide=Math.abs(puck.position.x)>14.4-radius&&Math.abs(puck.position.x)<17.4+radius;
-  if(overlapsGoalSide&&Math.abs(puck.position.z)>goalSideLimit){
-   const side=Math.sign(puck.position.z);
-   puck.position.z=side*goalSideLimit;
-   if(u.vz*side>0)u.vz=-Math.abs(u.vz)*boardBounce;
-  }
-  // À l'entrée, seule l'ouverture réellement dégagée laisse passer le palet.
-  if(!inGoalMouth&&Math.abs(puck.position.x)>rinkXLimit){
-   const side=Math.sign(puck.position.x);
-   puck.position.x=side* rinkXLimit;
-   if(u.vx*side>0)u.vx=-Math.abs(u.vx)*boardBounce;
-  }
-  // Le fond de cage bloque le palet si celui-ci n'est pas entré dans l'ouverture.
-  if(!inGoalMouth&&Math.abs(puck.position.x)>goalBackLimit){
-   const side=Math.sign(puck.position.x);
-   puck.position.x=side*goalBackLimit;
-   if(u.vx*side>0)u.vx=-Math.abs(u.vx)*boardBounce;
-  }
-  if(Math.abs(puck.position.z)>rinkZLimit){
-   const side=Math.sign(puck.position.z);
-   puck.position.z=side* rinkZLimit;
-   if(u.vz*side>0)u.vz=-Math.abs(u.vz)*boardBounce;
-  }
  }
- const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
- if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
+ const speed=Math.hypot(u.vx,u.vz);
+ if(speed>19){u.vx*=19/speed;u.vz*=19/speed}
 }
 function showPointBanner(text){const banner=$('#round-banner');banner.textContent=text;banner.classList.remove('hidden','point-pop');void banner.offsetWidth;banner.classList.add('point-pop')}
  function scoreGoal(team){if(goalLock>0||hockeyFaceoff)return;goalLock=1.2;if(team==='blue')scoreBlue++;else scoreRed++;const label=team==='blue'?'BLEU':'ROUGE';$('#status').textContent='BUT '+label;showPointBanner('BUT '+label);if(mode==='hockey')startHockeyFaceoff();else resetPositions()}
