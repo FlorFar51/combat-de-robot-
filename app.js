@@ -160,11 +160,25 @@ function robotHitboxes(bot){
 }
 function confineRobot(bot){
  if(mode==='sumo')return;
- const inGoalLane=mode==='hockey'&&Math.abs(bot.root.position.z)<(4.88/2-1.15);const bounds=new THREE.Box3().setFromObject(bot.root),minX=mode==='hockey'?(inGoalLane?-19.2:-14.12):-13.72,maxX=mode==='hockey'?(inGoalLane?19.2:14.12):13.72,minZ=mode==='hockey'?-8.72:-13.72,maxZ=mode==='hockey'?8.72:13.72;
+ const x=bot.root.position.x,z=bot.root.position.z,prevZ=bot.prevZ??z;
+ const inHockey=mode==='hockey',entryX=14.12,laneLimit=1.29,backLimit=16.15;
+ // Garde le robot dans la cage une fois qu'il a franchi son entrée.
+ const insideGoal=inHockey&&Math.abs(x)>entryX&&Math.abs(prevZ)<laneLimit+.12;
+ const inGoalLane=inHockey&&(Math.abs(z)<laneLimit||insideGoal);
+ const bounds=new THREE.Box3().setFromObject(bot.root);
+ const minX=inHockey?(inGoalLane?-backLimit:-14.12):-13.72;
+ const maxX=inHockey?(inGoalLane?backLimit:14.12):13.72;
+ const minZ=inHockey?-8.72:-13.72,maxZ=inHockey?8.72:13.72;
  if(bounds.min.x<minX)bot.root.position.x+=minX-bounds.min.x;
  if(bounds.max.x>maxX)bot.root.position.x-=bounds.max.x-maxX;
  if(bounds.min.z<minZ)bot.root.position.z+=minZ-bounds.min.z;
  if(bounds.max.z>maxZ)bot.root.position.z-=bounds.max.z-maxZ;
+ // Les parois latérales de cage bloquent le déplacement transversal,
+ // au lieu de renvoyer le robot sur la ligne d'entrée.
+ if(inHockey&&Math.abs(bot.root.position.x)>entryX){
+  if(Math.abs(bot.root.position.z)>laneLimit)bot.root.position.z=Math.sign(bot.root.position.z)*laneLimit;
+  if(Math.abs(bot.root.position.x)>backLimit)bot.root.position.x=Math.sign(bot.root.position.x)*backLimit;
+ }
 }
 function collideBots(a,b,dt){
  const ah=robotHitboxes(a),bh=robotHitboxes(b);let weaponA=false,weaponB=false;
