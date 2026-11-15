@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/+esm';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/+@dimforge/rapier3d-compat@0.20.0/+esm';
 const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen'), renderCanvas=$('#arena-canvas');
 window.__arenaModuleStarted=true;
 window.__showArenaDiagnostic?.('Module chargé : initialisation du moteur 3D…');
@@ -36,7 +36,7 @@ const physicsLab=(()=>{
  async function init(){
   try{
    status.textContent='CHARGEMENT RAPIER…';
-   await RAPIER.init({});
+   await RAPIER.init();
    scene=new THREE.Scene();scene.background=new THREE.Color(0x101820);
    camera=new THREE.PerspectiveCamera(43,1,.1,100);camera.position.set(5.7,5.2,7.4);camera.lookAt(0,.5,0);
    renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;
