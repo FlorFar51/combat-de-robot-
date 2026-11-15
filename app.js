@@ -19,7 +19,7 @@ const DEFAULT_BINDINGS={forward:'KeyZ',left:'KeyQ',right:'KeyD',action:'KeyE'};l
 const controllerMap={throttle:{axis:2,invert:1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.1,puckBounce=10;
-const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,guestState:null};
+const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,lastPing:0,ping:null,hz:60,guestStates:[]};
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
 const M={floor:mat(0x333333),black:mat(0x111111,.65,.35),steel:mat(0x888888,.8,.25),blue:mat(0x59636c,.7,.32),red:mat(0xaaaaaa,.7,.32),rubber:mat(0x090909,.1,.9),line:mat(0xeeeeee)};
@@ -394,16 +394,17 @@ function connectNetwork(serverUrl){
   net.serverUrl=base;netStatus('Connexion au serveur…');
   const ws=new WebSocket(endpoint);net.ws=ws;
   const timeout=setTimeout(()=>{if(ws.readyState!==WebSocket.OPEN){ws.close();reject(new Error('Serveur inaccessible. Vérifie le tunnel Cloudflare.'))}},10000);
-  ws.onopen=()=>{clearTimeout(timeout);resolve()};
+  ws.onopen=()=>{clearTimeout(timeout);net.lastPing=0;resolve()};
   ws.onerror=()=>{clearTimeout(timeout);reject(new Error('Connexion impossible. Vérifie l’adresse du tunnel et le serveur.'))};
-  ws.onclose=()=>{if(net.ws===ws){netStatus('Déconnecté du serveur');if(net.role)$('#online-state').textContent='Connexion interrompue';net.role=null}};
+  ws.onclose=()=>{if(net.ws===ws){netStatus('Déconnecté du serveur');if(net.role)$('#online-state').textContent='Connexion interrompue';net.role=null;net.guestStates.length=0;net.ping=null;const p=$('#network-ping');if(p)p.textContent='PING —'}};
   ws.onmessage=event=>{let msg;try{msg=JSON.parse(event.data)}catch{return}
-   if(msg.type==='created'){
+   if(msg.type==='net_pong'){net.ping=Math.max(0,performance.now()-Number(msg.sentAt||performance.now()));const p=$('#network-ping');if(p)p.textContent='PING '+Math.round(net.ping)+' ms';
+   }else if(msg.type==='created'){
     net.role='host';net.roomId=msg.roomId;$('#room-code').textContent=msg.roomId;$('#room-password').textContent=msg.password;
     const invite=new URL(location.href);invite.searchParams.set('room',msg.roomId);invite.searchParams.set('server',net.serverUrl);
     $('#room-link').value=invite.toString();$('#invite-area').classList.remove('hidden');$('#online-state').textContent='Lobby créé · en attente du deuxième joueur';netStatus('Serveur connecté · lobby privé créé');
    }else if(msg.type==='joined'){
-    net.role='guest';net.roomId=msg.roomId;$('#online-state').textContent='Connecté au lobby · en attente de l’hôte';netStatus('Connecté au lobby '+msg.roomId);
+    net.role='guest';net.roomId=msg.roomId;net.guestStates.length=0;$('#online-state').textContent='Connecté au lobby · en attente de l’hôte';netStatus('Connecté au lobby '+msg.roomId);
    }else if(msg.type==='opponent_joined'){
     net.opponent=true;$('#online-state').textContent='2 joueurs connectés · prêt à jouer';netStatus('Ton ami a rejoint le lobby');
    }else if(msg.type==='opponent_left'){
@@ -411,9 +412,9 @@ function connectNetwork(serverUrl){
    }else if(msg.type==='remote_input'){
     net.remote={throttle:msg.throttle||0,steering:msg.steering||0,action:!!msg.action};
    }else if(msg.type==='start'){
-    if(net.role==='guest'){setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??.1),0,1);puckBounce=clamp(Number(msg.puckBounce??10),0,100);$('#puck-glide').value=String(puckGlide*100);$('#puck-glide-value').textContent=(puckGlide*100).toFixed(0)+' %';$('#puck-bounce').value=String(puckBounce);$('#puck-bounce-value').textContent=puckBounce+' %';const receivedDuration=msg.mode==='hockey'?300:clamp(Number(msg.duration)||120,30,7200);$('#duration').value=[60,120,180,300,600].includes(receivedDuration)?String(receivedDuration):'custom';$('#custom-duration').value=String(Math.round(receivedDuration/60));$('#custom-duration-setting').style.display=$('#duration').value==='custom'?'grid':'none';startMatch(msg.startAt,receivedDuration)}
+    if(net.role==='guest'){net.hz=Number(msg.networkHz)===30?30:60;$('#network-rate').value=String(net.hz);net.guestStates.length=0;setMode(msg.mode);$('#difficulty').value=msg.difficulty||'normal';puckGlide=clamp(Number(msg.puckGlide??.1),0,1);puckBounce=clamp(Number(msg.puckBounce??10),0,100);$('#puck-glide').value=String(puckGlide*100);$('#puck-glide-value').textContent=(puckGlide*100).toFixed(0)+' %';$('#puck-bounce').value=String(puckBounce);$('#puck-bounce-value').textContent=puckBounce+' %';const receivedDuration=msg.mode==='hockey'?300:clamp(Number(msg.duration)||120,30,7200);$('#duration').value=[60,120,180,300,600].includes(receivedDuration)?String(receivedDuration):'custom';$('#custom-duration').value=String(Math.round(receivedDuration/60));$('#custom-duration-setting').style.display=$('#duration').value==='custom'?'grid':'none';startMatch(msg.startAt,receivedDuration)}
    }else if(msg.type==='state'&&net.role==='guest'){
-    applyNetworkState(msg.state);
+    if(msg.state){net.guestStates.push({time:performance.now(),state:msg.state});if(net.guestStates.length>16)net.guestStates.shift()}
    }else if(msg.type==='end'&&net.role==='guest'){
     finish(msg.winner||'NUL',msg.detail||'Fin du match');
    }else if(msg.type==='left'){
@@ -421,6 +422,27 @@ function connectNetwork(serverUrl){
    }else if(msg.type==='error'){netStatus(msg.message||'Erreur serveur')}
   };
  });
+}
+function applyBufferedNetworkState(){
+ if(net.role!=='guest'||!net.guestStates.length)return;
+ const buffer=net.guestStates,targetTime=performance.now()-80;
+ while(buffer.length>2&&buffer[1].time<targetTime)buffer.shift();
+ const a=buffer[0],b=buffer[Math.min(1,buffer.length-1)],span=b.time-a.time;
+ const alpha=span>0?clamp((targetTime-a.time)/span,0,1):1;
+ const mix=(x,y)=>Number.isFinite(x)&&Number.isFinite(y)?x+(y-x)*alpha:(Number.isFinite(y)?y:x);
+ const angleMix=(x,y)=>{const d=((y-x+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;return x+d*alpha};
+ const state={...b.state};
+ for(const key of ['blue','red']){
+  const av=a.state?.[key],bv=b.state?.[key];if(!av||!bv)continue;
+  state[key]={...bv};
+  for(const k of ['x','y','z','v'])state[key][k]=mix(av[k],bv[k]);
+  state[key].r=angleMix(Number(av.r)||0,Number(bv.r)||0);
+ }
+ if(a.state?.puck&&b.state?.puck){
+  state.puck={...b.state.puck};
+  for(const k of ['x','y','z','vx','vz','rx','rz'])state.puck[k]=mix(a.state.puck[k],b.state.puck[k]);
+ }
+ applyNetworkState(state);
 }
 function applyNetworkState(s){
  if(!s||!player||!enemy)return;
@@ -449,10 +471,10 @@ $('#join-lobby').addEventListener('click',joinOnlineLobby);
 $('#copy-invite').addEventListener('click',()=>{const value=$('#room-link').value;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Lien copié')).catch(()=>{$('#room-link').select();netStatus('Copie le lien sélectionné')});else{$('#room-link').select();netStatus('Copie le lien sélectionné')}});
 $('#copy-password').addEventListener('click',()=>{const value=$('#room-password').textContent;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(()=>netStatus('Mot de passe copié'))});
 function getMatchDuration(){if(mode==='hockey')return 300;const selected=$('#duration').value;return selected==='custom'?clamp(Number($('#custom-duration').value)||2,1,120)*60:Number(selected)||120}
- function launchOnlineMatch(){if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');const startAt=Date.now()+3000,duration=getMatchDuration();wsSend('start',{mode,difficulty:$('#difficulty').value,puckGlide,puckBounce,startAt,duration});startMatch(startAt,duration)}
+ function launchOnlineMatch(){if(net.role!=='host')return netStatus('Seul l’hôte peut lancer la partie.');if(!net.opponent)return netStatus('Attends que ton ami rejoigne le lobby.');if(!net.ws||net.ws.readyState!==WebSocket.OPEN)return netStatus('Connexion au serveur perdue.');const startAt=Date.now()+3000,duration=getMatchDuration();net.hz=Number($('#network-rate').value)===30?30:60;wsSend('start',{mode,difficulty:$('#difficulty').value,puckGlide,puckBounce,startAt,duration,networkHz:net.hz});startMatch(startAt,duration)}
 $('#start-online').addEventListener('click',launchOnlineMatch);
 $('#leave-online').addEventListener('click',()=>{wsSend('leave');if(net.ws)net.ws.close();net.role=null;net.roomId=null;$('#online-state').textContent='Hors du lobby';netStatus('Lobby quitté')});
-try{const params=new URLSearchParams(location.search);$('#server-url').value=params.get('server')||localStorage.getItem('robotArenaServerUrl')||'';if(params.get('room')){$('#join-room').value=params.get('room');$('#online-state').textContent='Invitation reçue · saisis le mot de passe'}}catch{}
+try{const savedHz=localStorage.getItem('robotArenaNetworkHz');$('#network-rate').value=savedHz==='30'?'30':'60';net.hz=Number($('#network-rate').value);$('#network-rate').addEventListener('change',()=>{net.hz=Number($('#network-rate').value)===30?30:60;localStorage.setItem('robotArenaNetworkHz',String(net.hz))});const params=new URLSearchParams(location.search);$('#server-url').value=params.get('server')||localStorage.getItem('robotArenaServerUrl')||'';if(params.get('room')){$('#join-room').value=params.get('room');$('#online-state').textContent='Invitation reçue · saisis le mot de passe'}}catch{}
 
 document.querySelectorAll('.mode-card').forEach(c=>c.addEventListener('click',()=>setMode(c.dataset.mode)));setMode('combat');
 function keyLabel(code){if(code==='Space')return 'ESPACE';if(code.startsWith('Key'))return code.slice(3);if(code.startsWith('Digit'))return code.slice(5);return code}
@@ -480,6 +502,7 @@ function readController(){const pads=navigator.getGamepads?navigator.getGamepads
 function actionDown(name){return !!keys[bindings[name]]}
 function fmt(t){const n=Math.max(0,Math.ceil(t));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0')}
 function startMatch(syncStartAt,matchDuration){
+ net.guestStates.length=0;
  if(!renderer){window.__showArenaDiagnostic?.('MATCH IMPOSSIBLE : le moteur WebGL ne s’est pas initialisé.',true);return}
  sawEnabled=false;hockeyFaceoff=null;remaining=mode==='hockey'?300:(matchDuration?clamp(Number(matchDuration)||120,30,7200):getMatchDuration());countdown=syncStartAt?Math.max(.05,(syncStartAt-Date.now())/1000):3;aiLevel=$('#difficulty').value;scoreBlue=scoreRed=roundBlue=roundRed=0;goalLock=0;ended=true;
  $('#end').classList.add('hidden');$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#hud-mode').textContent=mode.toUpperCase();
@@ -515,7 +538,7 @@ function loop(){
   const keyboardSteer=Number(actionDown('right'))-Number(actionDown('left'));
   const f=padInput&&Math.abs(padInput.throttle)>.12?padInput.throttle:keyboardThrottle;
   const steering=(padInput&&Math.abs(padInput.steering)>.12?padInput.steering:keyboardSteer)*-1;
-  if(net.role==='guest'){const now=performance.now();if(now-net.lastInput>45){wsSend('input',{throttle:f,steering,action:actionDown('action')||!!padInput?.sawPressed});net.lastInput=now}}
+  if(net.role==='guest'){const now=performance.now();if(now-net.lastInput>=1000/net.hz){wsSend('input',{throttle:f,steering,action:actionDown('action')||!!padInput?.sawPressed});net.lastInput=now}}
   const sawKey=actionDown('action'),sawButton=!!padInput?.sawPressed,sawInput=sawKey||sawButton;
   if(mode==='combat'&&sawInput&&!lastSawKey)sawEnabled=!sawEnabled;
   lastSawKey=sawInput;
@@ -532,10 +555,12 @@ function loop(){
    if(mode==='hockey'){const ex=enemy.root.position.clone(),er=enemy.root.rotation.y;collideBots(player,enemy,dt);if(testMode){enemy.root.position.copy(ex);enemy.root.rotation.y=er;enemy.v=0}if(reportBad('après collision robots'))return;if(!hockeyFaceoff){updatePuck(dt);if(sawInput)attackPuck(player)}}
    else{const ex=enemy.root.position.clone(),er=enemy.root.rotation.y;collideBots(player,enemy,dt);if(testMode){enemy.root.position.copy(ex);enemy.root.rotation.y=er;enemy.v=0}if(reportBad('après collision robots'))return;if(mode==='sumo')updateSumo()}
    updateHud();
-   const now=performance.now();if(net.role==='host'&&net.roomId&&now-net.lastState>45){wsSend('state',{state:{blue:{x:player.root.position.x,y:player.root.position.y,z:player.root.position.z,r:player.root.rotation.y,v:player.v,hp:player.hp,contacts:player.contacts},red:{x:enemy.root.position.x,y:enemy.root.position.y,z:enemy.root.position.z,r:enemy.root.rotation.y,v:enemy.v,hp:enemy.hp,contacts:enemy.contacts},puck:puck?{x:puck.position.x,y:puck.position.y,z:puck.position.z,vx:puck.userData.vx,vz:puck.userData.vz,rx:puck.rotation.x,rz:puck.rotation.z}:null,hockeyFaceoff:hockeyFaceoff?{phase:hockeyFaceoff.phase}:null,remaining,scoreBlue,scoreRed,roundBlue,roundRed}});net.lastState=now}
+   const now=performance.now();if(net.role==='host'&&net.roomId&&now-net.lastState>=1000/net.hz){wsSend('state',{state:{blue:{x:player.root.position.x,y:player.root.position.y,z:player.root.position.z,r:player.root.rotation.y,v:player.v,hp:player.hp,contacts:player.contacts},red:{x:enemy.root.position.x,y:enemy.root.position.y,z:enemy.root.position.z,r:enemy.root.rotation.y,v:enemy.v,hp:enemy.hp,contacts:enemy.contacts},puck:puck?{x:puck.position.x,y:puck.position.y,z:puck.position.z,vx:puck.userData.vx,vz:puck.userData.vz,rx:puck.rotation.x,rz:puck.rotation.z}:null,hockeyFaceoff:hockeyFaceoff?{phase:hockeyFaceoff.phase}:null,remaining,scoreBlue,scoreRed,roundBlue,roundRed}});net.lastState=now}
   }
  }
- if(net.role==='host'&&net.roomId&&mode==='hockey'&&hockeyFaceoff&&player&&enemy){const now=performance.now();if(now-net.lastState>45){wsSend('state',{state:{blue:{x:player.root.position.x,y:player.root.position.y,z:player.root.position.z,r:player.root.rotation.y,v:player.v,hp:player.hp,contacts:player.contacts},red:{x:enemy.root.position.x,y:enemy.root.position.y,z:enemy.root.position.z,r:enemy.root.rotation.y,v:enemy.v,hp:enemy.hp,contacts:enemy.contacts},puck:puck?{x:puck.position.x,y:puck.position.y,z:puck.position.z,vx:0,vz:0,rx:puck.rotation.x,rz:puck.rotation.z}:null,hockeyFaceoff:true,remaining,scoreBlue,scoreRed,roundBlue,roundRed}});net.lastState=now}}
+ if(net.role==='host'&&net.roomId&&mode==='hockey'&&hockeyFaceoff&&player&&enemy){const now=performance.now();if(now-net.lastState>=1000/net.hz){wsSend('state',{state:{blue:{x:player.root.position.x,y:player.root.position.y,z:player.root.position.z,r:player.root.rotation.y,v:player.v,hp:player.hp,contacts:player.contacts},red:{x:enemy.root.position.x,y:enemy.root.position.y,z:enemy.root.position.z,r:enemy.root.rotation.y,v:enemy.v,hp:enemy.hp,contacts:enemy.contacts},puck:puck?{x:puck.position.x,y:puck.position.y,z:puck.position.z,vx:0,vz:0,rx:puck.rotation.x,rz:puck.rotation.z}:null,hockeyFaceoff:true,remaining,scoreBlue,scoreRed,roundBlue,roundRed}});net.lastState=now}}
+ if(net.role==='guest'&&!ended)applyBufferedNetworkState();
+ const nowPing=performance.now();if(net.ws&&net.ws.readyState===WebSocket.OPEN&&nowPing-net.lastPing>=1000){wsSend('net_ping',{sentAt:nowPing});net.lastPing=nowPing}
  const target=player?new THREE.Vector3((player.root.position.x+enemy.root.position.x)*.5,0,(player.root.position.z+enemy.root.position.z)*.5):new THREE.Vector3(0,0,0);
  camera.position.lerp(new THREE.Vector3(target.x,mode==='sumo'?19:mode==='combat'?27:20,target.z+(mode==='combat'?34:mode==='hockey'?27:19)),.045);camera.lookAt(target);if(renderer){try{renderer.render(scene,camera)}catch(error){ended=true;countdown=0;window.__showArenaDiagnostic?.('ERREUR WEBGL PENDANT LE MATCH : '+(error?.message||String(error)),true)}}
 }
