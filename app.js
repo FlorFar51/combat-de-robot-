@@ -222,7 +222,7 @@ function updatePuck(dt){
  // Les vitesses sont exprimées en unités d'arène par seconde.
  const hitRobot=b=>{
   const cs=Math.cos(b.root.rotation.y),sn=Math.sin(b.root.rotation.y);
-  const robotBottom=-.42,robotTop=.29,puckHalfThickness=.072;if(puck.position.y-puckHalfThickness>robotTop||puck.position.y+puckHalfThickness<robotBottom)return;
+  const robotBottom=-.30,robotTop=.52,puckHalfThickness=.072;if(puck.position.y-puckHalfThickness>robotTop||puck.position.y+puckHalfThickness<robotBottom)return;
   const dx=puck.position.x-b.root.position.x,dz=puck.position.z-b.root.position.z;
   let x=cs*dx-sn*dz,z=sn*dx+cs*dz;
   let vx=cs*puck.userData.vx-sn*puck.userData.vz,vz=sn*puck.userData.vx+cs*puck.userData.vz;
