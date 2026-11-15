@@ -169,37 +169,42 @@ function confineRobot(bot){
   if(bounds.max.z>maxZ)bot.root.position.z-=bounds.max.z-maxZ;
   return;
  }
- // En hockey, on utilise le même rectangle orienté que pour les collisions entre robots.
- // Son centre est décalé vers l'avant, comme les deux fourches du modèle.
+ // Projection du contour orienté sur les parois : seule la composante normale
+ // est corrigée, la composante tangentielle reste libre pour glisser le long du mur.
  const halfW=1.15,halfL=1.214,centerForward=.764;
  const angle=bot.root.rotation.y,s=Math.sin(angle),c=Math.cos(angle);
- const centerX=bot.root.position.x+s*centerForward;
- const centerZ=bot.root.position.z+c*centerForward;
  const extentX=halfW*Math.abs(c)+halfL*Math.abs(s);
  const extentZ=halfW*Math.abs(s)+halfL*Math.abs(c);
- const mouthHalfWidth=2.44;
- const fitsGoal=Math.abs(centerZ)+extentZ<=mouthHalfWidth;
- const enteringGoal=Math.abs(centerX)+extentX>14.25;
- if(enteringGoal&&fitsGoal){
-  // Une fois l'ouverture franchie, les bandes latérales de la cage limitent Z.
-  const zLimit=mouthHalfWidth-extentZ;
-  const boundedZ=clamp(centerZ,-zLimit,zLimit);
-  bot.root.position.z+=boundedZ-centerZ;
-  // Le fond de cage se trouve à x=17.4 (face intérieure x=17.25).
-  const backLimit=17.25-extentX;
-  const boundedX=clamp(centerX,-backLimit,backLimit);
-  bot.root.position.x+=boundedX-centerX;
- }else{
-  // Hors de l'ouverture, la bande latérale de la patinoire bloque le robot
-  // avant qu'il puisse pénétrer dans le mur.
-  const sideLimit=14.25-extentX;
-  const boundedX=clamp(centerX,-sideLimit,sideLimit);
-  bot.root.position.x+=boundedX-centerX;
+ const walls=[
+  {axis:'z',face:8.85,sign:1,min:-14.4,max:14.4},
+  {axis:'z',face:-8.85,sign:-1,min:-14.4,max:14.4},
+  {axis:'x',face:14.25,sign:1,min:2.44,max:9},
+  {axis:'x',face:14.25,sign:1,min:-9,max:-2.44},
+  {axis:'x',face:-14.25,sign:-1,min:2.44,max:9},
+  {axis:'x',face:-14.25,sign:-1,min:-9,max:-2.44},
+  {axis:'z',face:2.44,sign:1,min:14.4,max:17.4},
+  {axis:'z',face:-2.44,sign:-1,min:14.4,max:17.4},
+  {axis:'z',face:2.44,sign:1,min:-17.4,max:-14.4},
+  {axis:'z',face:-2.44,sign:-1,min:-17.4,max:-14.4},
+  {axis:'x',face:17.25,sign:1,min:-2.44,max:2.44},
+  {axis:'x',face:-17.25,sign:-1,min:-2.44,max:2.44}
+ ];
+ for(let pass=0;pass<3;pass++){
+  for(const wall of walls){
+   const alongX=wall.axis==='z';
+   const tangentCenter=alongX?bot.root.position.x+s*centerForward:bot.root.position.z+c*centerForward;
+   const tangentExtent=alongX?extentX:extentZ;
+   if(tangentCenter+tangentExtent<wall.min||tangentCenter-tangentExtent>wall.max)continue;
+   const normalCenter=alongX?bot.root.position.z+c*centerForward:bot.root.position.x+s*centerForward;
+   const normalExtent=alongX?extentZ:extentX;
+   const penetration=wall.sign*(normalCenter-wall.face)+normalExtent;
+   if(penetration>0){
+    const correction=penetration+.001;
+    if(alongX)bot.root.position.z-=wall.sign*correction;
+    else bot.root.position.x-=wall.sign*correction;
+   }
+  }
  }
- // Les bandes transversales de la patinoire restent actives dans tous les cas.
- const rinkZLimit=8.85-extentZ;
- const boundedRinkZ=clamp(bot.root.position.z+s*centerForward,-rinkZLimit,rinkZLimit);
- bot.root.position.z+=boundedRinkZ-(bot.root.position.z+s*centerForward);
 }
 function collideBots(a,b,dt){
  const ah=robotHitboxes(a),bh=robotHitboxes(b);let weaponA=false,weaponB=false;
