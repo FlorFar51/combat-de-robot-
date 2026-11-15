@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import RAPIER from 'https://cdn.jsdelivr.net/npm/+@dimforge/rapier3d-compat@0.20.0/+esm';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.20.0/+esm';
 const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen'), renderCanvas=$('#arena-canvas');
 window.__arenaModuleStarted=true;
 window.__showArenaDiagnostic?.('Module chargé : initialisation du moteur 3D…');
