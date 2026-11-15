@@ -108,6 +108,7 @@ wss.on('connection', ws => {
     }
     const room = ws.room;
     if (!room) return send(ws, 'error', { message: 'Rejoins ou crée un lobby avant cette action.' });
+    if (msg.type === 'net_ping') { send(ws, 'net_pong', { sentAt: Number(msg.sentAt) || Date.now() }); return; }
     if (msg.type === 'start') {
       if (ws !== room.host) return send(ws, 'error', { message: 'Seul l’hôte peut lancer le match.' });
       broadcast(room, ws, 'start', {
@@ -116,7 +117,8 @@ wss.on('connection', ws => {
         puckGlide: Math.max(0, Math.min(20, Number(msg.puckGlide) || 5)),
         puckBounce: Math.max(0, Math.min(100, Number(msg.puckBounce) || 65)),
         startAt: Math.max(Date.now() + 500, Math.min(Date.now() + 10000, Number(msg.startAt) || Date.now() + 3000)),
-        duration: Math.max(30, Math.min(7200, Number(msg.duration) || 120))
+        duration: Math.max(30, Math.min(7200, Number(msg.duration) || 120)),
+        networkHz: Number(msg.networkHz) === 30 ? 30 : 60
       });
       return;
     }
