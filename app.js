@@ -110,6 +110,8 @@ const physicsLab=(()=>{
  }
  function frame(now){
   if(!ready||failed)return;
+  const rect=canvas.getBoundingClientRect();
+  if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
   const dt=Math.min((now-last)/1000||0,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
   while(accumulator>=fixedDt){drive();world.step();accumulator-=fixedDt}
   const p=body.translation(),q=body.rotation();robotVisual.position.set(p.x,p.y,p.z);robotVisual.quaternion.set(q.x,q.y,q.z,q.w);
