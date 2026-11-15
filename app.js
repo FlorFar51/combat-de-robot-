@@ -89,7 +89,7 @@ const physicsLab=(()=>{
   const keyboardSteer=(right?1:0)-(left?1:0);
   const rawPadSteer=pad?.axes?.[0]??0;
   const padSteer=Math.abs(rawPadSteer)<.14?0:rawPadSteer;
-  const steer=keyboardSteer||padSteer;
+  var steer=keyboardSteer||padSteer;
   const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
   if(throttle>.01)lastLabAction='Propulsion active · '+Math.round(throttle*100)+' %';
   else if(Math.abs(steer)>.01)lastLabAction='Direction active · '+Number(steer).toFixed(2);
