@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import RAPIER from 'https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.17.3/+esm';
 const $=s=>document.querySelector(s), game=$('#game'), menu=$('#menu'), arenaScreen=$('#arena-screen'), renderCanvas=$('#arena-canvas');
 window.__arenaModuleStarted=true;
 window.__showArenaDiagnostic?.('Module chargé : initialisation du moteur 3D…');
@@ -20,6 +21,112 @@ const controllerMap={throttle:{axis:2,invert:1},steering:{axis:0,invert:1},saw:{
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.1,puckBounce=10;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,lastPing:0,ping:null,hz:60,guestStates:[]};
+
+/* RAPIER_PHYSICS_LAB — prototype isolé pour valider la physique 3D avant intégration au gameplay */
+const physicsLab=(()=>{
+ const canvas=document.querySelector('#physics-canvas'),status=document.querySelector('#physics-state');
+ if(!canvas)return null;
+ let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false;
+ const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();
+ const settings={power:.65,turn:.55,grip:.85,brake:false};
+ const mat=(color,metalness=.2,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
+ const mats={frame:mat(0x788b9c,.7,.3),top:mat(0x344b5e,.6,.32),rubber:mat(0x101317,.05,.95),fork:mat(0xb9c7d2,.8,.24),ground:mat(0x242a30,.25,.75)};
+ const V=(x,y,z)=>new RAPIER.Vector3(x,y,z);
+ function visualBox(parent,w,h,d,material,pos){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(...pos);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+ async function init(){
+  try{
+   status.textContent='CHARGEMENT RAPIER…';
+   await RAPIER.init();
+   scene=new THREE.Scene();scene.background=new THREE.Color(0x101820);
+   camera=new THREE.PerspectiveCamera(43,1,.1,100);camera.position.set(5.7,5.2,7.4);camera.lookAt(0,.5,0);
+   renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio||1,2));renderer.shadowMap.enabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;
+   scene.add(new THREE.HemisphereLight(0xc8ddf0,0x343a40,2));
+   const sun=new THREE.DirectionalLight(0xffffff,2.2);sun.position.set(-4,8,5);sun.castShadow=true;scene.add(sun);
+   const floor=new THREE.Mesh(new THREE.BoxGeometry(18,.4,18),mats.ground);floor.position.y=-.2;floor.receiveShadow=true;scene.add(floor);
+   const grid=new THREE.GridHelper(18,36,0x65717c,0x38434d);grid.position.y=.008;scene.add(grid);
+   world=new RAPIER.World(V(0,-9.81,0));world.timestep=fixedDt;
+   const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.2,0));
+   world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.9).setRestitution(.08),floorBody);
+   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,1.05,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(.35));
+   body.setAdditionalMass(3.2,true);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setFriction(.75).setRestitution(.08),body);
+   // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
+   const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
+   for(const x of [-.88,.88]){
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.23,.16).setTranslation(x,-.12,0).setFriction(.95).setRestitution(.03),body);
+    const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.castShadow=true;robotVisual=null;
+    wheels.push({x,collider:col,mesh,spin:0});
+   }
+   robotVisual=new THREE.Group();scene.add(robotVisual);
+   visualBox(robotVisual,1.56,.4,1.12,mats.frame,[0,0,0]);
+   visualBox(robotVisual,1.02,.12,.8,mats.top,[0,.255,-.03]);
+   // Two fixed forks and low-friction skids.
+   visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.13,-.91]);
+   visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.15,.52]);
+   visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.15,.52]);
+   wheels.forEach(w=>robotVisual.add(w.mesh));
+   clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 60 HZ';
+   requestAnimationFrame(frame);
+  }catch(err){failed=true;status.textContent='ERREUR PHYSIQUE';document.querySelector('#physics-message').textContent='Impossible de charger Rapier : '+(err?.message||String(err));console.error(err)}
+ }
+ function localToWorld(x,y,z){const q=body.rotation();const p=body.translation();const v=new RAPIER.Vector3(x,y,z);const r=q;const xx=v.x,yy=v.y,zz=v.z;v.x=(1-2*(r.y*r.y+r.z*r.z))*xx+2*(r.x*r.y-r.z*r.w)*yy+2*(r.x*r.z+r.y*r.w)*zz;v.y=2*(r.x*r.y+r.z*r.w)*xx+(1-2*(r.x*r.x+r.z*r.z))*yy+2*(r.y*r.z-r.x*r.w)*zz;v.z=2*(r.x*r.z-r.y*r.w)*xx+2*(r.y*r.z+r.x*r.w)*yy+(1-2*(r.x*r.x+r.y*r.y))*zz;return V(p.x+v.x,p.y+v.y,p.z+v.z)}
+ function drive(){
+  const forward=keys.has('KeyZ')||keys.has('ArrowUp'),left=keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),brake=keys.has('Space');
+  const throttle=forward?1:0,steer=(right?1:0)-(left?1:0);
+  const rot=body.rotation(),p=body.translation();
+  const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
+  const lv=body.linvel();
+  // Per-wheel raycasts approximate adaptive support: only grounded wheels transmit motor force.
+  let grounded=0;
+  for(const w of wheels){
+   const origin=localToWorld(w.x,-.1,0),down=V(0,-1,0);
+   const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.34,true);
+   if(hit&&hit.collider&&hit.collider!==w.collider){
+    grounded++;
+    const point=V(origin.x,origin.y-hit.toi,origin.z);
+    const wheelForward=localToWorld(0,0,-1),wheelSide=localToWorld(1,0,0);
+    const pointVelocity=body.velocityAtPoint(point);
+    const vForward=pointVelocity.x*wheelForward.x+pointVelocity.y*wheelForward.y+pointVelocity.z*wheelForward.z;
+    const vSide=pointVelocity.x*wheelSide.x+pointVelocity.y*wheelSide.y+pointVelocity.z*wheelSide.z;
+    const normalLoad=body.mass()*9.81/2;
+    const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
+    const desired=(throttle*settings.power*7.5-vForward*(brake?8:2.2));
+    const motor=clamp(desired*body.mass()*.48,-traction,traction);
+    const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);
+    body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
+    w.spin+=vForward/fixedDt*.025;
+   }else w.spin*=.995;
+  }
+  // Differential steering: opposite wheel-side torque lets the robot pivot without reverse drive command.
+  if(grounded>0&&Math.abs(steer)>.01){
+   const yawTorque=steer*settings.turn*body.mass()*3.2;
+   body.addTorque(V(0,yawTorque,0),true);
+  }
+  if(brake){const velocity=body.linvel();body.setLinvel(V(velocity.x*.94,velocity.y,velocity.z*.94),true)}
+  // Keep the demo in its test area; this is a soft arena boundary, not a robot movement clamp.
+  if(Math.abs(p.x)>7.5||Math.abs(p.z)>7.5)body.applyImpulse(V(-Math.sign(p.x)*.08,0,-Math.sign(p.z)*.08),true);
+ }
+ function frame(now){
+  if(!ready||failed)return;
+  const dt=Math.min((now-last)/1000||0,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
+  while(accumulator>=fixedDt){drive();world.step();accumulator-=fixedDt}
+  const p=body.translation(),q=body.rotation();robotVisual.position.set(p.x,p.y,p.z);robotVisual.quaternion.set(q.x,q.y,q.z,q.w);
+  wheels.forEach(w=>{w.mesh.rotation.x=w.spin});
+  const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,.055);camera.lookAt(p.x,p.y,p.z);
+  renderer.render(scene,camera);requestAnimationFrame(frame);
+ }
+ function resize(){if(!renderer||!camera)return;const r=canvas.getBoundingClientRect();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);camera.aspect=Math.max(1,r.width)/Math.max(1,r.height);camera.updateProjectionMatrix()}
+ window.addEventListener('keydown',e=>{if(['KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,1.05,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
+ window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
+ for(const [id,key] of [['physics-power','power'],['physics-turn','turn'],['physics-grip','grip']]){
+  const input=document.getElementById(id),output=document.getElementById(id+'-value');
+  input?.addEventListener('input',()=>{settings[key]=Number(input.value)/100;if(output)output.textContent=input.value+' %'});
+ }
+ window.addEventListener('resize',resize);if(window.ResizeObserver)new ResizeObserver(resize).observe(canvas.parentElement);
+ init().then(()=>resize());
+ return {get ready(){return ready}};
+})();
+
 const clock=new THREE.Clock(),clamp=(v,a,b)=>Math.max(a,Math.min(b,v)),rand=(a,b)=>a+Math.random()*(b-a);
 const mat=(color,metalness=.25,roughness=.55)=>new THREE.MeshStandardMaterial({color,metalness,roughness});
 const M={floor:mat(0x333333),black:mat(0x111111,.65,.35),steel:mat(0x888888,.8,.25),blue:mat(0x59636c,.7,.32),red:mat(0xaaaaaa,.7,.32),rubber:mat(0x090909,.1,.9),line:mat(0xeeeeee)};
