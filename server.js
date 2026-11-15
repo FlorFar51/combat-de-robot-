@@ -132,7 +132,7 @@ wss.on('connection', ws => {
     }
     if (msg.type === 'state') {
       if (ws !== room.host || !room.players.size) return;
-      broadcast(room, ws, 'state', msg.state || {});
+      broadcast(room, ws, 'state', { state: msg.state || {} });
       return;
     }
     if (msg.type === 'end') {
