@@ -260,9 +260,12 @@ function updatePuck(dt){
    b.puckTouchCooldown=.08;
   }
  };
- // Sous-pas courts pour éviter que le palet traverse les robots à grande vitesse.
- const travel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
- const steps=Math.max(1,Math.ceil(travel/.06)),step=dt/steps;
+ // Sous-pas 3D : suivre aussi le déplacement vertical pour éviter que le palet traverse la hitbox entre deux frames.
+ const horizontalTravel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
+ const verticalSpeed=Math.abs(Number(puck.userData.vy)||0);
+ const verticalTravel=verticalSpeed*dt+9*dt*dt;
+ const travel=Math.max(horizontalTravel,verticalTravel);
+ const steps=Math.max(1,Math.ceil(travel/.04)),step=dt/steps;
  for(let i=0;i<steps;i++){
   puck.position.x+=puck.userData.vx*step;puck.position.z+=puck.userData.vz*step;
   const u=puck.userData;u.vy=Number(u.vy)||0;if(u.vy!==0||puck.position.y>.12){u.vy-=18*step;puck.position.y+=u.vy*step;if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.8)u.vy=-u.vy*.24;else u.vy=0}}
