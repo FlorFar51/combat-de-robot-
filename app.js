@@ -48,15 +48,15 @@ const physicsLab=(()=>{
    const grid=new THREE.GridHelper(18,36,0x65717c,0x38434d);grid.position.y=.008;scene.add(grid);
    world=new RAPIER.World(V(0,-9.81,0));world.timestep=fixedDt;
    const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.2,0));
-   world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.45).setRestitution(.08),floorBody);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.22).setRestitution(.08),floorBody);
    body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
    previousRenderPosition=new THREE.Vector3(0,.43,0);currentRenderPosition=new THREE.Vector3(0,.43,0);previousRenderQuaternion=new THREE.Quaternion();currentRenderQuaternion=new THREE.Quaternion();
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.20,0).setFriction(.18).setRestitution(.08),body);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.20,0).setFriction(.08).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
-    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.28).setRestitution(.03),body);
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,0).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.12).setRestitution(.03),body);
     const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,0);mesh.castShadow=true;
     wheels.push({x,collider:col,mesh,spin:0,previousSpin:0});
    }
@@ -67,8 +67,8 @@ const physicsLab=(()=>{
    visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.33,-.91]);
    visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.35,.52]);
    visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.35,.52]);
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.33,-.91).setFriction(.05).setRestitution(.04),body);
-   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.35,.52).setFriction(.05).setRestitution(.02),body);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.33,-.91).setFriction(.02).setRestitution(.04),body);
+   for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.35,.52).setFriction(.02).setRestitution(.02),body);
    wheels.forEach(w=>robotVisual.add(w.mesh));
    clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 120 HZ';
    requestAnimationFrame(frame);
@@ -113,17 +113,17 @@ const physicsLab=(()=>{
     const vSide=pointVelocity.x*wheelSide.x+pointVelocity.y*wheelSide.y+pointVelocity.z*wheelSide.z;
     const normalLoad=body.mass()*9.81/2;
     const traction=clamp(settings.grip*normalLoad*1.6,0,normalLoad*2.4);
-    const differential=steer*settings.turn*1.6*(w.x<0?1:-1);
-    const desired=(throttle*settings.power*7.5+differential-vForward*(brake?8:2.2));
+    const differential=steer*settings.turn*2*1.6*(w.x<0?1:-1);
+    const desired=(throttle*settings.power*2*7.5+differential-vForward*(brake?8:2.2));
     const motor=clamp(desired*body.mass()*.48,-traction,traction);appliedMotor+=motor;if(w.x<0)leftMotor=motor;else rightMotor=motor;
-    const lateral=clamp(-vSide*body.mass()*5*settings.grip,-traction*.85,traction*.85);if(w.x<0)leftLateral=lateral;else rightLateral=lateral;
+    const lateral=clamp(-vSide*body.mass()*3.2*settings.grip,-traction*.65,traction*.65);if(w.x<0)leftLateral=lateral;else rightLateral=lateral;
     body.addForceAtPoint(V(wheelForward.x*motor+wheelSide.x*lateral,wheelForward.y*motor+wheelSide.y*lateral,wheelForward.z*motor+wheelSide.z*lateral),point,true);
     w.spin+=vForward/fixedDt*.025;
    }else w.spin*=.995;
   }
    // Secours moteur direct si les raycasts de roues ne detectent aucun contact.
    if(Math.abs(throttle)>.01&&grounded===0){
-    const fallback=throttle*settings.power*body.mass()*8;
+    const fallback=throttle*settings.power*2*body.mass()*8;
     body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
     appliedMotor=fallback;
    }
