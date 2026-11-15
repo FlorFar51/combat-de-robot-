@@ -95,8 +95,8 @@ const physicsLab=(()=>{
    const origin=localToWorld(w.x,-.20,0),down=V(0,-1,0);
    const ray=new RAPIER.Ray(origin,down),hit=world.castRay(ray,.5,true,undefined,undefined,undefined,body);
    if(hit&&hit.collider&&hit.collider!==w.collider){
-    rayHits++;grounded++;if(firstRay==='—')firstRay=hit.toi.toFixed(3)+' m';
-    const point=V(origin.x,origin.y-hit.toi,origin.z);
+     rayHits++;grounded++;const toi=Number(hit.toi??hit.timeOfImpact??0);if(firstRay==='—')firstRay=(Number.isFinite(toi)?toi.toFixed(3):'n/a')+' m';
+     const point=V(origin.x,origin.y-toi,origin.z);
     const wheelForward=localToWorld(0,0,-1),wheelSide=localToWorld(1,0,0);
     const pointVelocity=body.velocityAtPoint(point);
     const vForward=pointVelocity.x*wheelForward.x+pointVelocity.y*wheelForward.y+pointVelocity.z*wheelForward.z;
