@@ -195,7 +195,7 @@ function confineRobot(bot){
   {axis:'x',face:17.25,sign:1,min:-2.44,max:2.44},
   {axis:'x',face:-17.25,sign:-1,min:-2.44,max:2.44}
  ];
- for(let pass=0;pass<3;pass++){
+ for(let pass=0;pass<2;pass++){
   for(const wall of walls){
    const alongX=wall.axis==='z';
    const tangentCenter=alongX?bot.root.position.x+s*centerForward:bot.root.position.z+c*centerForward;
@@ -205,9 +205,18 @@ function confineRobot(bot){
    const normalExtent=alongX?extentZ:extentX;
    const penetration=wall.sign*(normalCenter-wall.face)+normalExtent;
    if(penetration>0){
-    const correction=penetration+.001;
-    if(alongX)bot.root.position.z-=wall.sign*correction;
-    else bot.root.position.x-=wall.sign*correction;
+    // Correction progressive aux angles des ouvertures de cage pour éviter
+    // qu'un chevauchement de deux segments n'expulse brutalement le robot.
+    const correction=Math.min(penetration+.001,.32);
+    if(alongX){
+     bot.root.position.z-=wall.sign*correction;
+     const vn=(bot.slideZ||0)*wall.sign;
+     if(vn>0)bot.slideZ-=vn;
+    }else{
+     bot.root.position.x-=wall.sign*correction;
+     const vn=(bot.slideX||0)*wall.sign;
+     if(vn>0)bot.slideX-=vn;
+    }
    }
   }
  }
@@ -270,36 +279,64 @@ function collideBots(a,b,dt){
  a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
 function collidePuckWithRobot(b){
-  const radius=.344;
-  // Collision 3D sur les volumes réels du modèle : châssis, roues et fourches.
-  const puckHalfThickness=.072,puckBottom=puck.position.y-puckHalfThickness,puckTop=puck.position.y+puckHalfThickness;
-  const parts=robotHitboxes(b);
-  let vx=puck.userData.vx,vz=puck.userData.vz,collided=false;
-  const botVx=Math.sin(b.root.rotation.y)*b.v+(b.slideX||0);
-  const botVz=Math.cos(b.root.rotation.y)*b.v+(b.slideZ||0);
-  for(const part of parts){
-   const box=part.box;
-   if(box.max.y<puckBottom||box.min.y>puckTop)continue;
-   const qx=clamp(puck.position.x,box.min.x,box.max.x),qz=clamp(puck.position.z,box.min.z,box.max.z);
-   const ox=puck.position.x-qx,oz=puck.position.z-qz,d2=ox*ox+oz*oz;
-   if(d2>=radius*radius)continue;
-   let nx,nz,depth;
-   if(d2>.000001){const d=Math.sqrt(d2);nx=ox/d;nz=oz/d;depth=radius-d}
-   else{
-    const px=Math.min(puck.position.x-box.min.x,box.max.x-puck.position.x);
-    const pz=Math.min(puck.position.z-box.min.z,box.max.z-puck.position.z);
-    if(px<pz){nx=puck.position.x<(box.min.x+box.max.x)/2?-1:1;nz=0;depth=radius+px}
-    else{nx=0;nz=puck.position.z<(box.min.z+box.max.z)/2?-1:1;depth=radius+pz}
-   }
-   puck.position.x+=nx*(depth+.003);puck.position.z+=nz*(depth+.003);
-   const relativeNormal=(vx-botVx)*nx+(vz-botVz)*nz;
-   if(relativeNormal<0){const impulse=1.12*relativeNormal;vx-=impulse*nx;vz-=impulse*nz}
-   collided=true;
+ const radius=.344,u=puck.userData;
+ const halfThickness=.072,puckBottom=puck.position.y-halfThickness,puckTop=puck.position.y+halfThickness;
+ // Ne pas toucher le palet avec les parties hautes du robot.
+ if(puckTop<-.02||puckBottom>.62)return;
+ const c=Math.cos(b.root.rotation.y),s=Math.sin(b.root.rotation.y);
+ const botVx=Math.sin(b.root.rotation.y)*b.v+(b.slideX||0);
+ const botVz=Math.cos(b.root.rotation.y)*b.v+(b.slideZ||0);
+ // Volumes 2D orientés du châssis et des deux fourches, dans le repère du robot.
+ const shapes=[
+  {x:0,z:0,hx:1.025,hz:.45},
+  {x:-.72,z:1.214,hx:.136,hz:.764},
+  {x:.72,z:1.214,hx:.136,hz:.764}
+ ];
+ let best=null;
+ for(const shape of shapes){
+  const dx=puck.position.x-b.root.position.x, dz=puck.position.z-b.root.position.z;
+  const lx=dx*c-dz*s-shape.x, lz=dx*s+dz*c-shape.z;
+  const qx=clamp(lx,-shape.hx,shape.hx),qz=clamp(lz,-shape.hz,shape.hz);
+  const ox=lx-qx,oz=lz-qz,d2=ox*ox+oz*oz;
+  if(d2>=radius*radius)continue;
+  let nx,nz,depth;
+  if(d2>.000001){
+   const d=Math.sqrt(d2);nx=ox/d;nz=oz/d;depth=radius-d;
+  }else{
+   const px=shape.hx-Math.abs(lx),pz=shape.hz-Math.abs(lz);
+   if(px<pz){nx=lx<0?-1:1;nz=0;depth=radius+px}
+   else{nx=0;nz=lz<0?-1:1;depth=radius+pz}
   }
-  if(collided){
-   if(testMode&&b===enemy){b.slideX=(b.slideX||0)+(puck.userData.vx-vx)*.42;b.slideZ=(b.slideZ||0)+(puck.userData.vz-vz)*.42}
-   puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08
-  }
+  if(!best||depth>best.depth)best={nx,nz,depth};
+ }
+ // Roues : petits contacts circulaires, utiles lorsque le palet arrive de côté.
+ for(const wx of [-1.03,1.03]){
+  const dx=puck.position.x-(b.root.position.x+wx*c),dz=puck.position.z-(b.root.position.z-wx*s);
+  const d=Math.hypot(dx,dz),combined=radius+.30;
+  if(d>=combined)continue;
+  const nx=d>.0001?dx/d:Math.sign(dx)||1,nz=d>.0001?dz/d:0,depth=combined-d;
+  if(!best||depth>best.depth)best={nx,nz,depth};
+ }
+ if(!best)return;
+ // Une seule résolution par frame : évite les expulsions successives entre plusieurs hitboxes.
+ puck.position.x+=best.nx*(best.depth+.002);
+ puck.position.z+=best.nz*(best.depth+.002);
+ const relativeNormal=(u.vx-botVx)*best.nx+(u.vz-botVz)*best.nz;
+ const beforeVx=u.vx,beforeVz=u.vz;
+ if(relativeNormal<0){
+  const restitution=.16;
+  const impulse=-(1+restitution)*relativeNormal;
+  u.vx+=impulse*best.nx;u.vz+=impulse*best.nz;
+  // Un peu de friction tangentielle transmet le mouvement latéral du robot au palet.
+  const tx=-best.nz,tz=best.nx;
+  const tangent=(u.vx-botVx)*tx+(u.vz-botVz)*tz;
+  u.vx-=tangent*.10*tx;u.vz-=tangent*.10*tz;
+ }
+ if(testMode&&b===enemy){
+  b.slideX=(b.slideX||0)+(beforeVx-u.vx)*.28;
+  b.slideZ=(b.slideZ||0)+(beforeVz-u.vz)*.28;
+ }
+ b.puckTouchCooldown=.08;
 }
 function updatePuck(dt){
  const radius=.344,u=puck.userData;
