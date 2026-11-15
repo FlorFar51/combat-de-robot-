@@ -17,7 +17,7 @@ try {
 scene.add(new THREE.HemisphereLight(0xaaaaaa,0x333333,1.7));const sun=new THREE.DirectionalLight(0xffffff,2);sun.position.set(-8,16,9);sun.castShadow=true;scene.add(sun);
 const world=new THREE.Group();scene.add(world);const keys={};
 const DEFAULT_BINDINGS={forward:'KeyW',left:'KeyA',right:'KeyD',action:'KeyE'};let bindings={...DEFAULT_BINDINGS},waitingForBind=null,assigning=null,activeGamepad=null,lastSawKey=false,lastControllerSaw=false,sawEnabled=false;
-const controllerMap={throttle:{axis:2,invert:-1},steering:{axis:0,invert:1},saw:{button:0}};
+const controllerMap={throttle:{axis:2,invert:1},steering:{axis:0,invert:1},saw:{button:0}};
 let invertThrottle=false,invertSteering=false;
 let mode='combat',player,enemy,puck,ended=true,countdown=0,remaining=120,testMode=false,aiLevel='normal',scoreBlue=0,scoreRed=0,roundBlue=0,roundRed=0,goalLock=0,hockeyFaceoff=null,tunedSpeed=2.7,tunedRotation=2.0,puckGlide=.1,puckBounce=10;
 const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{throttle:0,steering:0,action:false},lastInput:0,lastState:0,lastPing:0,ping:null,hz:60,guestStates:[]};
@@ -129,7 +129,7 @@ const physicsLab=(()=>{
     const msg=document.querySelector('#physics-message');
     if(msg){
      const mass=Number(body.mass())||0,pos=body.translation(),vel=body.linvel();
-     msg.textContent='LABO DIAG v81 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
+     msg.textContent='LABO DIAG v82 · Entrée '+Math.round(throttle*100)+' % · Axe3 '+Number(axis3||0).toFixed(2)+' · Force moteur '+Number(appliedMotor||0).toFixed(1)+' N · Contact '+grounded+'/2 · Rayons '+rayHits+'/2 ('+firstRay+') · Masse '+mass.toFixed(1)+' kg · Y '+Number(pos.y||0).toFixed(2)+' m · Vitesse '+Math.hypot(vel.x,vel.z).toFixed(2)+' m/s';
     }
    }
   // La direction est produite uniquement par le différentiel des roues, sans couple direct sur le châssis.
