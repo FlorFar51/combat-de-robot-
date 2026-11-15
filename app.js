@@ -73,8 +73,15 @@ const physicsLab=(()=>{
  }
  function localToWorld(x,y,z){const q=body.rotation();const p=body.translation();const v=new RAPIER.Vector3(x,y,z);const r=q;const xx=v.x,yy=v.y,zz=v.z;v.x=(1-2*(r.y*r.y+r.z*r.z))*xx+2*(r.x*r.y-r.z*r.w)*yy+2*(r.x*r.z+r.y*r.w)*zz;v.y=2*(r.x*r.y+r.z*r.w)*xx+(1-2*(r.x*r.x+r.z*r.z))*yy+2*(r.y*r.z-r.x*r.w)*zz;v.z=2*(r.x*r.z-r.y*r.w)*xx+2*(r.y*r.z+r.x*r.w)*yy+(1-2*(r.x*r.x+r.y*r.y))*zz;return V(p.x+v.x,p.y+v.y,p.z+v.z)}
  function drive(){
-  const forward=keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'),left=keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),brake=keys.has('Space');
-  const throttle=forward?1:0,steer=(right?1:0)-(left?1:0);
+  const forward=keys.has('KeyW')||keys.has('KeyZ')||keys.has('ArrowUp'),left=keys.has('KeyA')||keys.has('KeyQ')||keys.has('ArrowLeft'),right=keys.has('KeyD')||keys.has('ArrowRight'),keyboardBrake=keys.has('Space');
+  // Laboratoire : l'avance est affectée à l'axe 3, avec inversion de son sens.
+  const pads=typeof navigator!=='undefined'&&navigator.getGamepads?[...navigator.getGamepads()]:[];
+  const pad=pads.find(p=>p&&p.connected);
+  const axis3=pad?.axes?.[3]??0;
+  const gamepadThrottle=Math.max(0,-axis3);
+  const throttle=Math.max(forward?1:0,Math.abs(gamepadThrottle)<.14?0:gamepadThrottle);
+  const steer=(right?1:0)-(left?1:0);
+  const brake=keyboardBrake||!!pad?.buttons?.[0]?.pressed;
   const rot=body.rotation(),p=body.translation();
   const fwd=localToWorld(0,0,-1),side=localToWorld(1,0,0);
   const lv=body.linvel();
@@ -128,7 +135,7 @@ const physicsLab=(()=>{
   }
  }
  function resize(){if(!renderer||!camera)return;const r=canvas.getBoundingClientRect();renderer.setSize(Math.max(1,r.width),Math.max(1,r.height),false);camera.aspect=Math.max(1,r.width)/Math.max(1,r.height);camera.updateProjectionMatrix()}
- window.addEventListener('keydown',e=>{if(['KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
+ window.addEventListener('keydown',e=>{if(['KeyW','KeyA','KeyZ','KeyQ','KeyD','ArrowUp','ArrowLeft','ArrowRight','Space'].includes(e.code)){keys.add(e.code);e.preventDefault()}if(e.code==='KeyR'&&body){body.setTranslation(V(0,.43,0),true);body.setRotation({x:0,y:0,z:0,w:1},true);body.setLinvel(V(0,0,0),true);body.setAngvel(V(0,0,0),true)}});
  window.addEventListener('keyup',e=>keys.delete(e.code));window.addEventListener('blur',()=>keys.clear());
  for(const [id,key] of [['physics-power','power'],['physics-turn','turn'],['physics-grip','grip']]){
   const input=document.getElementById(id),output=document.getElementById(id+'-value');
