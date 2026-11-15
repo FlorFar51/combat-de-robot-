@@ -48,20 +48,20 @@ const physicsLab=(()=>{
    const grid=new THREE.GridHelper(54,108,0x65717c,0x38434d);grid.position.y=.008;scene.add(grid);
    world=new RAPIER.World(V(0,-9.81,0));world.timestep=fixedDt;
    const floorBody=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(0,-.2,0));
-   world.createCollider(RAPIER.ColliderDesc.cuboid(27,.2,27).setFriction(.22).setRestitution(0),floorBody);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(27,.2,27).setFriction(.22).setRestitution(.08),floorBody);
    const obstacleMat=mat(0x596b78,.45,.48),rampMat=mat(0x8a765c,.25,.72),tireMat=mat(0x171a1d,.05,.95);
    function staticBox(w,h,d,x,y,z,rx=0,ry=0,rz=0,material=obstacleMat){
     const euler=new THREE.Euler(rx,ry,rz),q=new THREE.Quaternion().setFromEuler(euler);
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);mesh.position.set(x,y,z);mesh.rotation.copy(euler);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
     const rb=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,y,z).setRotation({x:q.x,y:q.y,z:q.z,w:q.w}));
-    world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setFriction(.55).setRestitution(0),rb);
+    world.createCollider(RAPIER.ColliderDesc.cuboid(w/2,h/2,d/2).setFriction(.55).setRestitution(.04),rb);
    }
    function staticTire(x,z,r=.72){
     // Pneus debout : visuel et collision partagent le même axe (horizontal).
     const mesh=new THREE.Mesh(new THREE.TorusGeometry(r*.72,r*.28,12,28),tireMat);mesh.position.set(x,r,z);mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
     const q={x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2};
     const rb=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(x,r,z).setRotation(q));
-    world.createCollider(RAPIER.ColliderDesc.cylinder(r*.28,r).setFriction(.8).setRestitution(0),rb);
+    world.createCollider(RAPIER.ColliderDesc.cylinder(r*.28,r).setFriction(.8).setRestitution(.08),rb);
    }
    // Rampes longues et douces, accessibles depuis le centre.
    // Rampes réglées pour que leur extrémité basse arrive au niveau du sol.
@@ -75,14 +75,14 @@ const physicsLab=(()=>{
    staticBox(5,.8,.45,0,.4,12);
    // Pneus fixes à contourner ou franchir.
    staticTire(-3,5,.78);staticTire(-1,6.5,.78);staticTire(2,5.8,.78);
-   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setCcdEnabled(true).setLinearDamping(.35).setAngularDamping(2.4));
+   body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
    previousRenderPosition=new THREE.Vector3(0,.43,0);currentRenderPosition=new THREE.Vector3(0,.43,0);previousRenderQuaternion=new THREE.Quaternion();currentRenderQuaternion=new THREE.Quaternion();
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.20,0).setFriction(.08).setRestitution(0),body);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setTranslation(0,-.20,0).setFriction(.08).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
    for(const x of [-.88,.88]){
-    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,.12).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.12).setRestitution(0),body);
+    const col=world.createCollider(RAPIER.ColliderDesc.cylinder(.08,.23).setTranslation(x,-.20,.12).setRotation({x:0,y:0,z:Math.SQRT1_2,w:Math.SQRT1_2}).setFriction(.12).setRestitution(.03),body);
     const mesh=new THREE.Mesh(wheelGeometry,mats.rubber);mesh.position.set(x,-.20,.12);mesh.castShadow=true;
     wheels.push({x,collider:col,mesh,spin:0,previousSpin:0});
    }
@@ -93,7 +93,7 @@ const physicsLab=(()=>{
    visualBox(robotVisual,.32,.09,.9,mats.fork,[0,-.33,-.91]);
    visualBox(robotVisual,.13,.075,.52,mats.fork,[-.52,-.35,.52]);
    visualBox(robotVisual,.13,.075,.52,mats.fork,[.52,-.35,.52]);
-   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.33,-.91).setFriction(.02).setRestitution(0),body);
+   world.createCollider(RAPIER.ColliderDesc.cuboid(.16,.045,.45).setTranslation(0,-.33,-.91).setFriction(.02).setRestitution(.04),body);
    for(const x of [-.52,.52])world.createCollider(RAPIER.ColliderDesc.cuboid(.065,.0375,.26).setTranslation(x,-.35,.52).setFriction(.02).setRestitution(0),body);
    wheels.forEach(w=>robotVisual.add(w.mesh));
    clock=new THREE.Clock();ready=true;status.textContent='PHYSIQUE ACTIVE · 120 HZ';
@@ -152,11 +152,6 @@ const physicsLab=(()=>{
     const fallback=throttle*settings.power*2*body.mass()*8;
     body.addForce(V(fwd.x*fallback,fwd.y*fallback,fwd.z*fallback),true);
     appliedMotor=fallback;
-   }
-   // Aide au dégagement en marche arrière : force centrale indépendante des contacts roues.
-   if(throttle<-.1){
-    const reverseAssist=throttle*body.mass()*12;
-    body.addForce(V(fwd.x*reverseAssist,fwd.y*reverseAssist,fwd.z*reverseAssist),true);
    }
    if(++inputDebugFrames%12===0){
     const msg=document.querySelector('#physics-message');
