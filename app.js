@@ -26,7 +26,7 @@ const net={ws:null,role:null,roomId:null,serverUrl:'',opponent:false,remote:{thr
 const physicsLab=(()=>{
  const canvas=document.querySelector('#physics-canvas'),status=document.querySelector('#physics-state');
  if(!canvas)return null;
- let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false;
+ let renderer,scene,camera,world,body,robotVisual,clock,last=0,accumulator=0,ready=false,failed=false,previousRenderPosition,currentRenderPosition,previousRenderQuaternion,currentRenderQuaternion;
  const fixedDt=1/60,keys=new Set(),wheels=[],tmpV=new THREE.Vector3();let inputDebugFrames=0,lastButtonStates=[],lastAxisSnapshot='',lastLabAction='Aucune';
   const inputDiag=()=>document.querySelector('#physics-input-diagnostic');
   function logLabInput(message){lastLabAction=message;const el=inputDiag();if(el)el.textContent='DERNIÈRE ACTION : '+message;}
@@ -51,6 +51,7 @@ const physicsLab=(()=>{
    world.createCollider(RAPIER.ColliderDesc.cuboid(9,.2,9).setFriction(.9).setRestitution(.08),floorBody);
    body=world.createRigidBody(RAPIER.RigidBodyDesc.dynamic().setTranslation(0,.43,0).setCanSleep(false).setLinearDamping(.18).setAngularDamping(1.1));
    body.setAdditionalMass(3.2,true);
+   previousRenderPosition=new THREE.Vector3(0,.43,0);currentRenderPosition=new THREE.Vector3(0,.43,0);previousRenderQuaternion=new THREE.Quaternion();currentRenderQuaternion=new THREE.Quaternion();
    world.createCollider(RAPIER.ColliderDesc.cuboid(.78,.2,.56).setFriction(.75).setRestitution(.08),body);
    // Two fixed drive wheels: their visual spin is separate, ground traction is calculated at each wheel contact.
    const wheelGeometry=new THREE.CylinderGeometry(.23,.23,.16,24);wheelGeometry.rotateZ(Math.PI/2);
@@ -144,10 +145,10 @@ const physicsLab=(()=>{
    const rect=canvas.getBoundingClientRect();
    if(rect.width<2||rect.height<2){last=now;accumulator=0;requestAnimationFrame(frame);return}
    const dt=Math.min((now-last)/1000||0,0.05);last=now;accumulator=Math.min(accumulator+dt,.12);
-   while(accumulator>=fixedDt){drive();world.step();accumulator-=fixedDt}
-   const p=body.translation(),q=body.rotation();robotVisual.position.set(p.x,p.y,p.z);robotVisual.quaternion.set(q.x,q.y,q.z,q.w);
+   while(accumulator>=fixedDt){previousRenderPosition.copy(currentRenderPosition);previousRenderQuaternion.copy(currentRenderQuaternion);drive();world.step();const simP=body.translation(),simQ=body.rotation();currentRenderPosition.set(simP.x,simP.y,simP.z);currentRenderQuaternion.set(simQ.x,simQ.y,simQ.z,simQ.w);accumulator-=fixedDt}
+   const alpha=clamp(accumulator/fixedDt,0,1);robotVisual.position.lerpVectors(previousRenderPosition,currentRenderPosition,alpha);robotVisual.quaternion.slerpQuaternions(previousRenderQuaternion,currentRenderQuaternion,alpha);
    wheels.forEach(w=>{w.mesh.rotation.x=w.spin});
-   const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,.055);camera.lookAt(p.x,p.y,p.z);
+   const p=robotVisual.position;const target=new THREE.Vector3(p.x+5.7,p.y+4.2,p.z+6.8);camera.position.lerp(target,1-Math.exp(-5*dt));camera.lookAt(p.x,p.y,p.z);
    renderer.render(scene,camera);requestAnimationFrame(frame);
   }catch(err){
    failed=true;status.textContent='ERREUR DE SIMULATION';
