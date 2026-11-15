@@ -274,9 +274,19 @@ function updatePuck(dt){
   const insideGoal=Math.abs(puck.position.z)<(2.44-.344);
   if(insideGoal&&puck.position.x>14.744){scoreGoal('blue');return}
   if(insideGoal&&puck.position.x< -14.744){scoreGoal('red');return}
-  // Hors de l'ouverture, les bandes latérales bloquent le palet.
-  if(Math.abs(puck.position.x)>14.1&&!insideGoal){puck.position.x=clamp(puck.position.x,-14.1,14.1);puck.userData.vx*=-(.05+puckBounce*.009)}
-  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-(.05+puckBounce*.009)}
+  // Même coefficient de rebond pour les bandes de la patinoire et celles des cages.
+  const boardBounce=.05+puckBounce*.009;
+  const inGoalExtension=mode==='hockey'&&Math.abs(puck.position.x)>14.1&&Math.abs(puck.position.x)<17.55;
+  // Les deux bandes noires intérieures des cages repoussent le palet comme les bandes latérales.
+  if(inGoalExtension&&Math.abs(puck.position.z)>2.44){
+   puck.position.z=Math.sign(puck.position.z)*2.44;
+   puck.userData.vz*=-boardBounce;
+  }
+  // Ne pas refermer l'entrée des cages avec l'ancienne limite verticale du terrain.
+  if(Math.abs(puck.position.x)>14.1&&!insideGoal&&!inGoalExtension){
+   puck.position.x=clamp(puck.position.x,-14.1,14.1);puck.userData.vx*=-boardBounce;
+  }
+  if(Math.abs(puck.position.z)>8.7){puck.position.z=clamp(puck.position.z,-8.7,8.7);puck.userData.vz*=-boardBounce}
  }
  const speed=Math.hypot(puck.userData.vx,puck.userData.vz);if(speed>19){puck.userData.vx*=19/speed;puck.userData.vz*=19/speed}
 }
