@@ -218,11 +218,7 @@ function collideBots(a,b,dt){
  }
  a.prevX=a.root.position.x;a.prevZ=a.root.position.z;b.prevX=b.root.position.x;b.prevZ=b.root.position.z;
 }
-function updatePuck(dt){
- const radius=.344;
- // Palet en PLA sur terrain plastique : faible frottement, légère résistance à l'air.
- // Les vitesses sont exprimées en unités d'arène par seconde.
- const hitRobot=b=>{
+function collidePuckWithRobot(b){
   // Collision 3D sur les volumes réels du modèle : châssis, roues et fourches.
   const puckHalfThickness=.072,puckBottom=puck.position.y-puckHalfThickness,puckTop=puck.position.y+puckHalfThickness;
   const parts=robotHitboxes(b);
@@ -249,7 +245,12 @@ function updatePuck(dt){
    collided=true;
   }
   if(collided){puck.userData.vx=vx;puck.userData.vz=vz;b.puckTouchCooldown=.08}
- };
+}
+function updatePuck(dt){
+ const radius=.344;
+ // Palet en PLA sur terrain plastique : faible frottement, légère résistance à l'air.
+ // Les vitesses sont exprimées en unités d'arène par seconde.
+
  // Sous-pas 3D : suivre aussi le déplacement vertical pour éviter que le palet traverse la hitbox entre deux frames.
  const horizontalTravel=Math.hypot(puck.userData.vx,puck.userData.vz)*dt;
  const verticalSpeed=Math.abs(Number(puck.userData.vy)||0);
@@ -259,7 +260,7 @@ function updatePuck(dt){
  for(let i=0;i<steps;i++){
   puck.position.x+=puck.userData.vx*step;puck.position.z+=puck.userData.vz*step;
   const u=puck.userData;u.vy=Number(u.vy)||0;if(u.vy!==0||puck.position.y>.12){u.vy-=18*step;puck.position.y+=u.vy*step;if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.8)u.vy=-u.vy*.24;else u.vy=0}}
-  for(const b of [player,enemy])hitRobot(b);
+  for(const b of [player,enemy])collidePuckWithRobot(b);
   // Glisse réglable de 0 à 100 : à 0, le palet s'arrête immédiatement.
   const speed=Math.hypot(puck.userData.vx,puck.userData.vz);
   if(puckGlide<=0){puck.userData.vx=0;puck.userData.vz=0}
@@ -278,10 +279,11 @@ function updatePuck(dt){
   const boardBounce=.05+puckBounce*.009;
   const inGoalExtension=mode==='hockey'&&Math.abs(puck.position.x)>14.1&&Math.abs(puck.position.x)<17.55;
   // Les deux bandes noires intérieures des cages repoussent le palet comme les bandes latérales.
-  if(inGoalExtension&&Math.abs(puck.position.z)>2.44){
-   puck.position.z=Math.sign(puck.position.z)*2.44;
-   puck.userData.vz*=-boardBounce;
-  }
+  const goalSideLimit=2.44-radius;
+   if(inGoalExtension&&Math.abs(puck.position.z)>goalSideLimit){
+    puck.position.z=Math.sign(puck.position.z)*goalSideLimit;
+    puck.userData.vz*=-boardBounce;
+   }
   // Ne pas refermer l'entrée des cages avec l'ancienne limite verticale du terrain.
   if(Math.abs(puck.position.x)>14.1&&!insideGoal&&!inGoalExtension){
    puck.position.x=clamp(puck.position.x,-14.1,14.1);puck.userData.vx*=-boardBounce;
@@ -293,7 +295,7 @@ function updatePuck(dt){
 function showPointBanner(text){const banner=$('#round-banner');banner.textContent=text;banner.classList.remove('hidden','point-pop');void banner.offsetWidth;banner.classList.add('point-pop')}
  function scoreGoal(team){if(goalLock>0||hockeyFaceoff)return;goalLock=1.2;if(team==='blue')scoreBlue++;else scoreRed++;const label=team==='blue'?'BLEU':'ROUGE';$('#status').textContent='BUT '+label;showPointBanner('BUT '+label);if(mode==='hockey')startHockeyFaceoff();else resetPositions()}
 function startHockeyFaceoff(){if(!puck)return;const start={x:puck.position.x,y:puck.position.y,z:puck.position.z};resetPositions();puck.position.set(start.x,.12,start.z);puck.rotation.set(0,0,0);puck.userData.vx=puck.userData.vz=0;puck.userData.vy=0;puck.userData.spinX=0;puck.userData.spinZ=0;hockeyFaceoff={phase:'return',elapsed:0,wait:1+Math.random()*4,start};ended=false;countdown=0;$('#countdown').classList.add('hidden');$('#status').textContent='REMISE EN JEU…'}
-function advanceHockeyFaceoff(dt){if(!hockeyFaceoff||!puck||hockeyFaceoff.phase==='remote')return;const f=hockeyFaceoff;f.elapsed+=dt;if(f.phase==='return'){const t=clamp(f.elapsed/.8,0,1),e=t*t*(3-2*t);puck.position.set(f.start.x*(1-e),.12+(7.2-.12)*e,f.start.z*(1-e));if(t>=1){f.phase='wait';f.elapsed=0;ended=false;puck.rotation.set(.12,0,-.09)}}else if(f.phase==='wait'){puck.position.set(0,7.2,0);puck.rotation.x+=.42*dt;puck.rotation.z-=.28*dt;if(f.elapsed>=f.wait){f.phase='drop';f.elapsed=0;puck.userData.vy=0;puck.userData.spinX=.42;puck.userData.spinZ=-.28}}else if(f.phase==='drop'){const u=puck.userData;u.vy=(u.vy||0)-18*dt;puck.position.y+=u.vy*dt;puck.rotation.x+=(u.spinX||0)*dt;puck.rotation.z+=(u.spinZ||0)*dt;u.spinX=(u.spinX||0)-puck.rotation.x*5*dt;u.spinZ=(u.spinZ||0)-puck.rotation.z*5*dt;const damping=Math.exp(-1.8*dt);u.spinX*=damping;u.spinZ*=damping;if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.65){u.vy=-u.vy*.32;u.spinX+=(Math.random()-.5)*.22;u.spinZ+=(Math.random()-.5)*.22}else{u.vy=0}}if(Math.abs(u.vy)<.45&&Math.abs(puck.rotation.x)<.035&&Math.abs(puck.rotation.z)<.035&&Math.abs(u.spinX)<.08&&Math.abs(u.spinZ)<.08){puck.position.y=.12;puck.rotation.set(0,0,0);hockeyFaceoff=null;ended=false;$('#status').textContent='REPRISE !'}}}
+function advanceHockeyFaceoff(dt){if(!hockeyFaceoff||!puck||hockeyFaceoff.phase==='remote')return;const f=hockeyFaceoff;f.elapsed+=dt;if(f.phase==='return'){const t=clamp(f.elapsed/.8,0,1),e=t*t*(3-2*t);puck.position.set(f.start.x*(1-e),.12+(7.2-.12)*e,f.start.z*(1-e));if(t>=1){f.phase='wait';f.elapsed=0;ended=false;puck.rotation.set(.12,0,-.09)}}else if(f.phase==='wait'){puck.position.set(0,7.2,0);puck.rotation.x+=.42*dt;puck.rotation.z-=.28*dt;if(f.elapsed>=f.wait){f.phase='drop';f.elapsed=0;puck.userData.vy=0;puck.userData.spinX=.42;puck.userData.spinZ=-.28}}else if(f.phase==='drop'){const u=puck.userData;u.vy=(u.vy||0)-18*dt;puck.position.y+=u.vy*dt;for(const b of [player,enemy])collidePuckWithRobot(b);puck.rotation.x+=(u.spinX||0)*dt;puck.rotation.z+=(u.spinZ||0)*dt;u.spinX=(u.spinX||0)-puck.rotation.x*5*dt;u.spinZ=(u.spinZ||0)-puck.rotation.z*5*dt;const damping=Math.exp(-1.8*dt);u.spinX*=damping;u.spinZ*=damping;if(puck.position.y<=.12){puck.position.y=.12;if(u.vy<-.65){u.vy=-u.vy*.32;u.spinX+=(Math.random()-.5)*.22;u.spinZ+=(Math.random()-.5)*.22}else{u.vy=0}}if(Math.abs(u.vy)<.45&&Math.abs(puck.rotation.x)<.035&&Math.abs(puck.rotation.z)<.035&&Math.abs(u.spinX)<.08&&Math.abs(u.spinZ)<.08){puck.position.y=.12;puck.rotation.set(0,0,0);hockeyFaceoff=null;ended=false;$('#status').textContent='REPRISE !'}}}
 function updateSumo(){for(const [b,t] of [[player,'blue'],[enemy,'red']])if(Math.hypot(b.root.position.x,b.root.position.z)>8.4){if(t==='blue')roundRed++;else roundBlue++;const winner=t==='blue'?'ROUGE':'BLEU';resetPositions();updateHud();showPointBanner('MANCHE '+winner);if(roundBlue>=2||roundRed>=2){finish(roundBlue>roundRed?'BLEU':'ROUGE','Deux manches gagnantes.');return}countdown=3;ended=true;$('#countdown').classList.remove('hidden');$('#countdown-number').textContent='3';$('#countdown .countdown-label').textContent='MANCHE '+(roundBlue+roundRed+1);$('#countdown .countdown-sub').textContent='PROCHAINE MANCHE DANS';$('#status').textContent='REPRISE DANS 3…';return}}
 function updateHud(){
  const blueBot=net.role==='guest'?enemy:player,redBot=net.role==='guest'?player:enemy;const a=mode==='combat'?blueBot.contacts:mode==='sumo'?roundBlue:scoreBlue,b=mode==='combat'?redBot.contacts:mode==='sumo'?roundRed:scoreRed;
